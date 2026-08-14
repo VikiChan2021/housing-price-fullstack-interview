@@ -4,11 +4,9 @@
 
 ## 1. 结论
 
-仓库的需求、架构、接口、模型、测试、运行和演示文档已经形成闭环，原始题目的必做项均可追踪到需求与验收标准。经过本次补充后，**文档层面已具备开始正式开发的条件**。
+仓库所有者已于 2026-08-14 明确批准进入 Phase 0B。工程基线已完成运行验证，G0~G6 全部为 `PASS`，因此项目已解除批准与工程阻塞，可以依照路线进入 Phase 1。
 
-正式开发当前仍为 `BLOCKED_BY_APPROVAL`：尚未获得仓库所有者批准。本状态不是技术缺陷，也不得通过创建脚手架、锁文件、模型或应用代码来绕过。
-
-批准后先执行路线图 Phase 0B（工程基线），其结果是“依赖能够解析、契约能够机器校验、工具链能够运行”；通过后才进入模型和业务代码阶段。
+此结论只代表“依赖可复现、契约可机器校验、三类最小项目可构建”。业务功能、Compose、浏览器验收和公网部署仍必须按阶段分别验证，不能据此描述为已完成。
 
 ## 2. 原题覆盖审计
 
@@ -31,8 +29,8 @@
 | G2 架构已决策 | 所有实现前 ADR 为 Accepted 或 Deferred | PASS | ADR-001~004 均为 Accepted |
 | G3 契约无关键语义歧义 | 路径、字段、边界、错误、批量上限明确 | PASS | API 契约第 1~6 节 |
 | G4 模型协议可复现 | 特征、CV、alpha 选择、产物元数据明确 | PASS | 数据与模型设计第 5~7 节 |
-| G5 所有者批准 | 明确允许开始 Phase 0B/正式开发 | WAITING | 本轮结束后等待用户批准 |
-| G6 工程基线可运行 | 锁文件、构建工具、OpenAPI 基线通过验证 | NOT RUN | 批准后执行 Phase 0B |
+| G5 所有者批准 | 明确允许开始 Phase 0B/正式开发 | PASS | 2026-08-14 用户明确批准“进入 Phase 0B，并按路线继续正式开发” |
+| G6 工程基线可运行 | 锁文件、构建工具、OpenAPI 基线通过验证 | PASS | 见第 5 节 Phase 0B 运行证据 |
 
 只有 G0~G5 为 PASS 才能创建工程脚手架。只有 G6 PASS 才能进入 Phase 1。
 
@@ -62,29 +60,32 @@
 - [Spring Boot 3.4 系统要求](https://docs.spring.io/spring-boot/3.4/system-requirements.html)
 - [Maven 发布历史](https://maven.apache.org/docs/history)
 
-## 5. 当前开发机预检（不等于项目验收）
+## 5. Phase 0B 运行证据（不等于业务验收）
 
-2026-08-14 的只读预检结果：
+2026-08-14 已执行：
 
-- Git 可用，工作分支为 `main`，检查前工作区无改动。
-- Docker CLI 29.6.2、Compose v5.3.1 已安装，但 Docker Desktop Linux Engine 未运行。
-- 当前 PATH 中 Node.js 为 22.22.0，不是冻结的 Node 24.18.0。
-- 当前仅发现 Python 3.11.9，没有 Python 3.12。
-- 当前 PATH 中没有 Java。
+- 两个 Python 服务均由 uv 0.11.32 使用 Python 3.12.13 完成 `uv lock --check`、冻结运行、Ruff、严格 mypy、pytest 和覆盖率门槛；最小健康检查各 2 项通过，覆盖率 100%。
+- Web 在 `node:24-slim` 的 linux/amd64 目标容器内，以 pnpm 11.15.1 冻结安装后通过 ESLint、TypeScript、Vitest、OpenAPI lint 和 Next.js 16.2.12 生产构建。
+- Java 工程在 `maven:3.9.16-eclipse-temurin-21` 的 linux/amd64 目标容器内通过 Maven Wrapper 构建和 2 项 Spring MVC 测试。
+- `ml-api`、`estimator-api`、`market-api` 三份 OpenAPI 3.1 基线及共享 JSON Schema 通过 Redocly recommended 规则校验；健康检查端点按约定跳过不适用的 `operation-4xx-response` 规则。
+- Docker Engine 29.6.2 已启动并用于目标容器验证；宿主机原有 Node 22、Python 3.11 和 Java 缺失未被覆盖。
 
-这不阻塞文档批准，但会阻塞本机直接运行 Phase 0B。批准开发后可优先使用 Docker 化工具链；执行 Compose 验收前必须启动 Docker Engine。若需要宿主机直接开发，则安装或通过版本管理器提供冻结版本，不覆盖系统现有运行时。
+冻结镜像（linux/amd64）：
 
-## 6. 批准后的第一批动作
+- `node@sha256:b31e7a42fdf8b8aa5f5ed477c72d694301273f1069c5a2f71d53c6482e99a2fc`
+- `python@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf`
+- `maven@sha256:c07f7ccfb8ca6c9fa29ee523f00afa7d2ca6132c92f8652c4aebb5ee3491f502`
+
+## 6. Phase 0B 已执行动作
 
 1. 为两个 Python 服务分别创建 `pyproject.toml` 与 `uv.lock`，在 `apps/web` 创建 `package.json` 与 `pnpm-lock.yaml`，在 `market-api` 创建 Maven Wrapper；只生成最小脚手架与 lockfile。
 2. 验证 Python 3.12、uv 0.11.32、Node 24、Java 21、Maven 3.9.16 和 Docker 构建工具链。
 3. 把人类可读契约转换为初始 OpenAPI/JSON Schema fixtures；校验全部示例和统一错误 envelope。
 4. 固定基础镜像不可变摘要，记录构建平台；运行依赖安装和最小空项目构建。
-5. 更新本文件 G6、`PROJECT_STATUS.md` 和追踪矩阵；只有 G6 PASS 才开始 Phase 1。
+5. 更新本文件 G6 与 `PROJECT_STATUS.md`；G6 已为 PASS，下一阶段为 Phase 1。
 
 ## 7. 变更控制
 
-- 未获批准前，只允许继续审阅或修改文档。
-- 批准应明确指出允许进入 Phase 0B；未明确扩大范围时，不包含公网部署和可选加分项。
+- 本次批准覆盖路线中的正式开发，不包含公网部署和可选加分项。
 - 版本、安全或原题理解发生变化时，先更新 ADR/需求/追踪矩阵，再改代码。
 - 任何未执行验证必须保留为 `NOT RUN`，不得以“配置已写”替代运行证据。

@@ -2,7 +2,7 @@
 
 原则：一次完成一个可验证的纵向阶段。所有任务引用需求/验收 ID；每阶段退出前更新 `docs/PROJECT_STATUS.md`。
 
-## Phase 0A：文档决策与批准门（已完成文档，等待批准）
+## Phase 0A：文档决策与批准门（已完成）
 
 任务：
 
@@ -17,9 +17,9 @@
 - ADR 均为 Accepted 或明确 Deferred：已满足。
 - 人类可读契约不存在关键语义歧义：已满足。
 - 开发就绪审计 G0~G4 为 PASS：已满足。
-- 所有者批准：等待中。
+- 所有者批准：2026-08-14 已满足。
 
-## Phase 0B：工程基线（仅在批准后执行）
+## Phase 0B：工程基线（已完成）
 
 任务：
 
@@ -31,13 +31,13 @@
 
 退出条件：
 
-- `DEVELOPMENT_READINESS.md` 的 G6 为 PASS。
-- 依赖版本可在目标开发机或目标容器中安装。
-- API 示例可以通过 schema 校验。
-- 三类空项目均可构建，且 lockfile 已纳入版本控制。
+- `DEVELOPMENT_READINESS.md` 的 G6 为 PASS：已满足。
+- 依赖版本可在目标开发机或目标容器中安装：已满足。
+- API 示例可以通过 schema 校验：已满足。
+- 三类空项目均可构建，且 lockfile 已生成：已满足。
 - 不得有契约歧义；失败时先更新 ADR/文档，不进入 Phase 1。
 
-## Phase 1：数据、模型和 ML API
+## Phase 1：数据、模型和 ML API（已完成）
 
 任务：
 
@@ -57,7 +57,7 @@
 - 模型指标由脚本生成，不含手填值。
 - Docker 容器内外预测一致。
 
-## Phase 2：Estimator API
+## Phase 2：Estimator API（已完成）
 
 任务：
 
@@ -74,7 +74,7 @@
 - Estimator 中没有 sklearn 或模型文件依赖。
 - ML API 停止时错误稳定、日志可关联。
 
-## Phase 3：Market API
+## Phase 3：Market API（进行中）
 
 任务：
 

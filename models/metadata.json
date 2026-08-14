@@ -1,0 +1,133 @@
+{
+  "baseline_metrics": {
+    "evaluation_protocol": "nested_5_fold_cross_validation",
+    "mae_mean": 7107.217809572481,
+    "mae_std": 1526.3331759379757,
+    "r2_mean": 0.9823850058181447,
+    "r2_std": 0.00883527020321391,
+    "rmse_mean": 9793.469377874182,
+    "rmse_std": 2902.4070890959492
+  },
+  "coefficient_space": "standardized",
+  "coefficients": {
+    "bathrooms": 7990.716489933337,
+    "bedrooms": -3221.0660415582215,
+    "distance_to_city_center": 31423.82995701958,
+    "lot_size": 55669.984039918185,
+    "school_rating": 14514.653869040318,
+    "square_footage": -22645.448564279613,
+    "year_built": -4498.7256208584
+  },
+  "dependencies": {
+    "joblib": "1.5.3",
+    "numpy": "2.4.3",
+    "python": "3.12.13",
+    "scikit_learn": "1.9.0"
+  },
+  "evaluation": {
+    "alpha_grid": [
+      0.01,
+      0.1,
+      1.0,
+      10.0,
+      100.0
+    ],
+    "implementation_version": "nested-cv-v1",
+    "inner_folds": 5,
+    "outer_folds": 5,
+    "protocol": "nested_5_fold_cross_validation",
+    "random_seed": 42,
+    "selection_metric": "mean_rmse",
+    "standard_deviation_ddof": 0,
+    "tie_breaker": "smaller_alpha"
+  },
+  "feature_mean": {
+    "bathrooms": 1.85,
+    "bedrooms": 3.04,
+    "distance_to_city_center": 4.638,
+    "lot_size": 7232.0,
+    "school_rating": 7.774,
+    "square_footage": 1690.2,
+    "year_built": 1996.26
+  },
+  "feature_names": [
+    "square_footage",
+    "bedrooms",
+    "bathrooms",
+    "year_built",
+    "lot_size",
+    "distance_to_city_center",
+    "school_rating"
+  ],
+  "feature_ranges": {
+    "bathrooms": {
+      "max": 3.0,
+      "min": 1.0
+    },
+    "bedrooms": {
+      "max": 4.0,
+      "min": 2.0
+    },
+    "distance_to_city_center": {
+      "max": 8.2,
+      "min": 2.1
+    },
+    "lot_size": {
+      "max": 10500.0,
+      "min": 4400.0
+    },
+    "school_rating": {
+      "max": 9.1,
+      "min": 6.5
+    },
+    "square_footage": {
+      "max": 2400.0,
+      "min": 980.0
+    },
+    "year_built": {
+      "max": 2012.0,
+      "min": 1978.0
+    }
+  },
+  "feature_scale": {
+    "bathrooms": 0.6946221994724903,
+    "bedrooms": 0.7472616676907763,
+    "distance_to_city_center": 1.9138328035646164,
+    "lot_size": 1873.09262985043,
+    "school_rating": 0.7926689094445423,
+    "square_footage": 420.90136611800153,
+    "year_built": 10.019600790450683
+  },
+  "hyperparameters": {
+    "alpha": 0.1
+  },
+  "intercept": 264600.0,
+  "limitations": [
+    "Small demonstration dataset",
+    "Highly correlated features",
+    "Not intended for real-world valuation",
+    "Predictions outside observed training ranges are less reliable"
+  ],
+  "metrics": {
+    "evaluation_protocol": "nested_5_fold_cross_validation",
+    "mae_mean": 7378.353264654969,
+    "mae_std": 1481.6614904793896,
+    "r2_mean": 0.9847201154946792,
+    "r2_std": 0.004842872275924428,
+    "rmse_mean": 9311.093202838118,
+    "rmse_std": 2144.9149688979096
+  },
+  "model_name": "ridge_regression",
+  "model_version": "ridge-v1-0e36c622-a05bac12",
+  "outer_selected_alphas": [
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    1.0
+  ],
+  "trained_at": "2026-08-14T13:26:55.393472+00:00",
+  "training_configuration_sha256": "A05BAC12354FFC2E69AB05971874782634B2A05D7FB7F58F522F0FD348580554",
+  "training_data_sha256": "0E36C6224E1F6FB97C308C9DBE1D6DA22D78D78055181067F8AC4C7155A4A726",
+  "training_rows": 50
+}

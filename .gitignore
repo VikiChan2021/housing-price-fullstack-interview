@@ -9,6 +9,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
 .venv/
 venv/
 
@@ -19,6 +20,9 @@ out/
 coverage/
 playwright-report/
 test-results/
+.pnpm-store/
+.playwright-cli/
+*.tsbuildinfo
 
 # Java / Gradle / Maven
 target/
@@ -42,4 +46,3 @@ data/processed/
 
 # Generated exports
 exports/
-

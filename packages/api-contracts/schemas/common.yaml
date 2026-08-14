@@ -1,0 +1,121 @@
+PropertyFeatures:
+  type: object
+  additionalProperties: false
+  required:
+    - square_footage
+    - bedrooms
+    - bathrooms
+    - year_built
+    - lot_size
+    - distance_to_city_center
+    - school_rating
+  properties:
+    square_footage:
+      type: number
+      exclusiveMinimum: 0
+      maximum: 100000
+    bedrooms:
+      type: integer
+      minimum: 0
+      maximum: 100
+    bathrooms:
+      type: number
+      minimum: 0
+      maximum: 100
+    year_built:
+      type: integer
+      minimum: 1600
+      maximum: 2100
+    lot_size:
+      type: number
+      exclusiveMinimum: 0
+      maximum: 100000000
+    distance_to_city_center:
+      type: number
+      minimum: 0
+      maximum: 10000
+    school_rating:
+      type: number
+      minimum: 0
+      maximum: 10
+  example:
+    square_footage: 1550
+    bedrooms: 3
+    bathrooms: 2
+    year_built: 1997
+    lot_size: 6800
+    distance_to_city_center: 4.1
+    school_rating: 7.6
+
+RangeWarning:
+  type: object
+  additionalProperties: false
+  required: [code, field, message, value, training_min, training_max]
+  properties:
+    code:
+      type: string
+      const: OUTSIDE_TRAINING_RANGE
+    field:
+      type: string
+    message:
+      type: string
+    value:
+      type: number
+    training_min:
+      type: number
+    training_max:
+      type: number
+
+ErrorDetail:
+  type: object
+  additionalProperties: false
+  required: [field, message]
+  properties:
+    field:
+      type: string
+    message:
+      type: string
+
+ErrorEnvelope:
+  type: object
+  additionalProperties: false
+  required: [error]
+  properties:
+    error:
+      type: object
+      additionalProperties: false
+      required: [code, message, details, request_id]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - EMPTY_BATCH
+            - BATCH_TOO_LARGE
+            - MODEL_NOT_READY
+            - UPSTREAM_UNAVAILABLE
+            - UPSTREAM_TIMEOUT
+            - DATASET_NOT_READY
+            - EXPORT_FAILED
+            - INTERNAL_ERROR
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: "#/ErrorDetail"
+        request_id:
+          type: string
+          format: uuid
+
+HealthResponse:
+  type: object
+  additionalProperties: true
+  required: [status, service]
+  properties:
+    status:
+      type: string
+      enum: [healthy, degraded, unhealthy]
+    service:
+      type: string
+

@@ -1,0 +1,266 @@
+openapi: 3.1.0
+info:
+  title: Housing Price ML API
+  version: 0.1.0
+  description: Baseline contract for training-artifact-backed housing price inference.
+  license:
+    name: Unlicensed interview exercise
+    identifier: LicenseRef-Unlicensed-Interview-Exercise
+servers:
+  - url: http://ml-api:8000
+security: []
+paths:
+  /api/v1/predict:
+    post:
+      operationId: predictHousingPrices
+      summary: Predict one or more housing prices
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "../schemas/common.yaml#/PropertyFeatures"
+                - type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    $ref: "../schemas/common.yaml#/PropertyFeatures"
+            examples:
+              single:
+                summary: Single property
+                value:
+                  square_footage: 1550
+                  bedrooms: 3
+                  bathrooms: 2
+                  year_built: 1997
+                  lot_size: 6800
+                  distance_to_city_center: 4.1
+                  school_rating: 7.6
+              batch:
+                summary: Batch of properties
+                value:
+                  - square_footage: 1550
+                    bedrooms: 3
+                    bathrooms: 2
+                    year_built: 1997
+                    lot_size: 6800
+                    distance_to_city_center: 4.1
+                    school_rating: 7.6
+      responses:
+        "200":
+          description: Ordered predictions
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictionResponse"
+              example:
+                predictions:
+                  - index: 0
+                    predicted_price: 248849.64
+                    warnings: []
+                count: 1
+                model_version: ridge-v1-0e36c622-a05bac12
+                request_id: 5c59f6b4-4a42-49c5-a7aa-b1dcb1431212
+        "413":
+          $ref: "#/components/responses/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ErrorResponse"
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/v1/model-info:
+    get:
+      operationId: getModelInfo
+      summary: Return model metadata and evaluation metrics
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Model metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelInfo"
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
+  /health:
+    get:
+      operationId: getMlHealth
+      summary: Report ML API health
+      responses:
+        "200":
+          description: Healthy service and loaded model
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "../schemas/common.yaml#/HealthResponse"
+                  - type: object
+                    required: [model_loaded, model_version]
+                    properties:
+                      model_loaded:
+                        type: boolean
+                      model_version:
+                        type: string
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
+  /ready:
+    get:
+      operationId: getMlReadiness
+      summary: Report model artifact readiness
+      responses:
+        "200":
+          description: Model artifact is ready
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/HealthResponse"
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
+components:
+  parameters:
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+  headers:
+    RequestId:
+      description: Correlation identifier for this request
+      schema:
+        type: string
+        format: uuid
+  responses:
+    ErrorResponse:
+      description: Stable error envelope
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorEnvelope"
+            examples:
+              validation:
+                summary: Invalid field
+                value:
+                  error:
+                    code: VALIDATION_ERROR
+                    message: One or more fields are invalid.
+                    details:
+                      - field: school_rating
+                        message: Input should be less than or equal to 10
+                    request_id: 5c59f6b4-4a42-49c5-a7aa-b1dcb1431212
+              modelNotReady:
+                summary: Model artifact unavailable
+                value:
+                  error:
+                    code: MODEL_NOT_READY
+                    message: Model artifact is not ready.
+                    details: []
+                    request_id: 5c59f6b4-4a42-49c5-a7aa-b1dcb1431212
+  schemas:
+    PredictionItem:
+      type: object
+      additionalProperties: false
+      required: [index, predicted_price, warnings]
+      properties:
+        index:
+          type: integer
+          minimum: 0
+        predicted_price:
+          type: number
+          exclusiveMinimum: 0
+        warnings:
+          type: array
+          items:
+            $ref: "../schemas/common.yaml#/RangeWarning"
+    PredictionResponse:
+      type: object
+      additionalProperties: false
+      required: [predictions, count, model_version, request_id]
+      properties:
+        predictions:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/PredictionItem"
+        count:
+          type: integer
+          minimum: 1
+          maximum: 100
+        model_version:
+          type: string
+        request_id:
+          type: string
+          format: uuid
+    MetricSummary:
+      type: object
+      additionalProperties: false
+      required: [evaluation_protocol, r2_mean, r2_std, mae_mean, mae_std, rmse_mean, rmse_std]
+      properties:
+        evaluation_protocol:
+          type: string
+          const: nested_5_fold_cross_validation
+        r2_mean: { type: number }
+        r2_std: { type: number, minimum: 0 }
+        mae_mean: { type: number, minimum: 0 }
+        mae_std: { type: number, minimum: 0 }
+        rmse_mean: { type: number, minimum: 0 }
+        rmse_std: { type: number, minimum: 0 }
+    ModelInfo:
+      type: object
+      additionalProperties: false
+      required:
+        - model_name
+        - model_version
+        - feature_names
+        - coefficient_space
+        - hyperparameters
+        - coefficients
+        - intercept
+        - feature_mean
+        - feature_scale
+        - training_rows
+        - training_data_sha256
+        - metrics
+        - limitations
+      properties:
+        model_name: { type: string, const: ridge_regression }
+        model_version: { type: string }
+        feature_names:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items: { type: string }
+        coefficient_space: { type: string, const: standardized }
+        hyperparameters:
+          type: object
+          required: [alpha]
+          properties:
+            alpha: { type: number, exclusiveMinimum: 0 }
+        coefficients:
+          type: object
+          additionalProperties: { type: number }
+        intercept: { type: number }
+        feature_mean:
+          type: object
+          additionalProperties: { type: number }
+        feature_scale:
+          type: object
+          additionalProperties: { type: number, exclusiveMinimum: 0 }
+        training_rows: { type: integer, const: 50 }
+        training_data_sha256: { type: string, pattern: "^[A-Fa-f0-9]{64}$" }
+        metrics:
+          $ref: "#/components/schemas/MetricSummary"
+        limitations:
+          type: array
+          items: { type: string }

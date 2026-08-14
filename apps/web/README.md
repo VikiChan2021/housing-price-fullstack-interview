@@ -15,5 +15,4 @@
 - `docs/api/API_CONTRACTS.md`
 - `docs/requirements/ACCEPTANCE_CRITERIA.md`
 
-当前目录没有应用代码。
-
+Phase 0B 已建立 Next.js App Router 最小工程、健康检查、精确依赖锁和质量门；Portal 业务页面尚未开始。

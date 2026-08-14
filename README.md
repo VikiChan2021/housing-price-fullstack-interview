@@ -7,9 +7,10 @@
 | 层级 | 状态 |
 |---|---|
 | 原始题目与数据归档 | 已完成并校验 |
-| 需求、架构、接口、测试和实施文档 | 已完成开发前审计，等待批准 |
-| 应用代码 | 尚未开始 |
-| Docker/本地运行 | 尚未实现、尚未验证 |
+| 需求、架构、接口、测试和实施文档 | 已完成开发前审计并获批准 |
+| 工程基线 | Phase 0B 已验证通过 |
+| 应用代码 | Phase 1（模型与 ML API）进行中 |
+| Docker/本地运行 | 工具链已验证；业务镜像与 Compose 尚未实现 |
 | 浏览器端到端验收 | 尚未执行 |
 | 公网部署 | 不在当前已验证范围 |
 
@@ -54,12 +55,12 @@
 
 ```text
 .
-├─ apps/web/                  # Next.js Portal，当前为空
+├─ apps/web/                  # Next.js Portal，已有 Phase 0B 最小工程
 ├─ services/
-│  ├─ ml-api/                 # FastAPI 模型服务，当前为空
-│  ├─ estimator-api/          # Python 估价业务服务，当前为空
-│  └─ market-api/             # Spring Boot 市场服务，当前为空
-├─ packages/api-contracts/    # 共享/生成的 API 类型，当前为空
+│  ├─ ml-api/                 # FastAPI 模型服务，Phase 1 进行中
+│  ├─ estimator-api/          # Python 估价业务服务，已有最小工程
+│  └─ market-api/             # Spring Boot 市场服务，已有最小工程
+├─ packages/api-contracts/    # OpenAPI 3.1 与共享 schema 基线
 ├─ data/raw/                  # 原始 CSV，只读
 ├─ models/                    # 后续生成的模型产物，不提交大文件
 ├─ infra/docker/              # 后续 Docker 配置
@@ -77,6 +78,6 @@
 
 ## 开发启动条件
 
-文档决策已完成，当前状态为“等待仓库所有者批准”。批准门、开发机预检与批准后的第一批动作见 [正式开发就绪审计](docs/development/DEVELOPMENT_READINESS.md)。在明确批准前不得创建脚手架、锁文件或业务代码。
+文档决策和 Phase 0B 工程基线均已完成，G0~G6 为 PASS；运行证据见 [正式开发就绪审计](docs/development/DEVELOPMENT_READINESS.md)。当前按路线实施 Phase 1。
 
-批准后的默认顺序为 Phase 0B 工程基线、模型与 ML API、Estimator API、Market API、Next.js Portal、Compose 集成、真实浏览器验收。
+默认顺序为模型与 ML API、Estimator API、Market API、Next.js Portal、Compose 集成、真实浏览器验收。

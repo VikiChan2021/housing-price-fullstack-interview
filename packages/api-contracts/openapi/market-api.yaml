@@ -1,0 +1,361 @@
+openapi: 3.1.0
+info:
+  title: Housing Price Market API
+  version: 0.1.0
+  description: Filtered market analytics and model-backed what-if API.
+  license:
+    name: Unlicensed interview exercise
+    identifier: LicenseRef-Unlicensed-Interview-Exercise
+servers:
+  - url: http://market-api:8080
+security: []
+paths:
+  /api/v1/market/summary:
+    get:
+      operationId: getMarketSummary
+      summary: Return aggregate statistics for current filters
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/MinPrice"
+        - $ref: "#/components/parameters/MaxPrice"
+        - $ref: "#/components/parameters/Bedrooms"
+        - $ref: "#/components/parameters/MinSquareFootage"
+        - $ref: "#/components/parameters/MaxSquareFootage"
+        - $ref: "#/components/parameters/MinBathrooms"
+        - $ref: "#/components/parameters/MinYearBuilt"
+        - $ref: "#/components/parameters/MaxYearBuilt"
+        - $ref: "#/components/parameters/MinSchoolRating"
+        - $ref: "#/components/parameters/MaxDistanceToCityCenter"
+      responses:
+        "200":
+          description: Aggregate statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketSummary"
+        "422":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/v1/market/properties:
+    get:
+      operationId: listMarketProperties
+      summary: Return filtered, sorted, paginated properties
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - $ref: "#/components/parameters/MinPrice"
+        - $ref: "#/components/parameters/MaxPrice"
+        - $ref: "#/components/parameters/Bedrooms"
+        - $ref: "#/components/parameters/MinSquareFootage"
+        - $ref: "#/components/parameters/MaxSquareFootage"
+        - $ref: "#/components/parameters/MinBathrooms"
+        - $ref: "#/components/parameters/MinYearBuilt"
+        - $ref: "#/components/parameters/MaxYearBuilt"
+        - $ref: "#/components/parameters/MinSchoolRating"
+        - $ref: "#/components/parameters/MaxDistanceToCityCenter"
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: sort
+          in: query
+          schema: { type: string, default: "id,asc" }
+      responses:
+        "200":
+          description: Property page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyPage"
+        "422":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/v1/market/segments:
+    get:
+      operationId: getMarketSegments
+      summary: Return grouped market statistics
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: group_by
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [bedrooms, year_band, price_band]
+        - $ref: "#/components/parameters/MinPrice"
+        - $ref: "#/components/parameters/MaxPrice"
+        - $ref: "#/components/parameters/Bedrooms"
+        - $ref: "#/components/parameters/MinSquareFootage"
+        - $ref: "#/components/parameters/MaxSquareFootage"
+        - $ref: "#/components/parameters/MinBathrooms"
+        - $ref: "#/components/parameters/MinYearBuilt"
+        - $ref: "#/components/parameters/MaxYearBuilt"
+        - $ref: "#/components/parameters/MinSchoolRating"
+        - $ref: "#/components/parameters/MaxDistanceToCityCenter"
+      responses:
+        "200":
+          description: Ordered segments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SegmentResponse"
+        "422":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/v1/market/what-if:
+    post:
+      operationId: runMarketWhatIf
+      summary: Compare model predictions for baseline and scenario
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WhatIfRequest"
+      responses:
+        "200":
+          description: Model-backed scenario comparison
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhatIfResponse"
+        "422":
+          $ref: "#/components/responses/ErrorResponse"
+        "502":
+          $ref: "#/components/responses/ErrorResponse"
+        "504":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/v1/market/export:
+    get:
+      operationId: exportMarketData
+      summary: Export all currently filtered rows
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: format
+          in: query
+          required: true
+          schema: { type: string, enum: [csv, pdf] }
+        - $ref: "#/components/parameters/MinPrice"
+        - $ref: "#/components/parameters/MaxPrice"
+        - $ref: "#/components/parameters/Bedrooms"
+        - $ref: "#/components/parameters/MinSquareFootage"
+        - $ref: "#/components/parameters/MaxSquareFootage"
+        - $ref: "#/components/parameters/MinBathrooms"
+        - $ref: "#/components/parameters/MinYearBuilt"
+        - $ref: "#/components/parameters/MaxYearBuilt"
+        - $ref: "#/components/parameters/MinSchoolRating"
+        - $ref: "#/components/parameters/MaxDistanceToCityCenter"
+      responses:
+        "200":
+          description: CSV or PDF export
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            text/csv:
+              schema: { type: string }
+            application/pdf:
+              schema: { type: string, contentEncoding: binary }
+        "422":
+          $ref: "#/components/responses/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /health:
+    get:
+      operationId: getMarketHealth
+      summary: Report process, dataset, and ML dependency health
+      responses:
+        "200":
+          description: Market API health
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "../schemas/common.yaml#/HealthResponse"
+                  - type: object
+                    required: [dataset_loaded, row_count, ml_api_status]
+                    properties:
+                      dataset_loaded: { type: boolean }
+                      row_count: { type: integer, minimum: 0 }
+                      ml_api_status: { type: string, enum: [up, down] }
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
+  /ready:
+    get:
+      operationId: getMarketReadiness
+      summary: Report dataset and ML dependency readiness
+      responses:
+        "200":
+          description: Market API is ready
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/HealthResponse"
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
+components:
+  parameters:
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      schema: { type: string, format: uuid }
+    MinPrice:
+      name: min_price
+      in: query
+      schema: { type: number, minimum: 0 }
+    MaxPrice:
+      name: max_price
+      in: query
+      schema: { type: number, minimum: 0 }
+    Bedrooms:
+      name: bedrooms
+      in: query
+      schema: { type: integer, minimum: 0, maximum: 100 }
+    MinSquareFootage:
+      name: min_square_footage
+      in: query
+      schema: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+    MaxSquareFootage:
+      name: max_square_footage
+      in: query
+      schema: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+    MinBathrooms:
+      name: min_bathrooms
+      in: query
+      schema: { type: number, minimum: 0, maximum: 100 }
+    MinYearBuilt:
+      name: min_year_built
+      in: query
+      schema: { type: integer, minimum: 1600, maximum: 2100 }
+    MaxYearBuilt:
+      name: max_year_built
+      in: query
+      schema: { type: integer, minimum: 1600, maximum: 2100 }
+    MinSchoolRating:
+      name: min_school_rating
+      in: query
+      schema: { type: number, minimum: 0, maximum: 10 }
+    MaxDistanceToCityCenter:
+      name: max_distance_to_city_center
+      in: query
+      schema: { type: number, minimum: 0, maximum: 10000 }
+  responses:
+    ErrorResponse:
+      description: Stable error envelope
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorEnvelope"
+  schemas:
+    AppliedFilters:
+      type: object
+      additionalProperties: true
+    CacheInfo:
+      type: object
+      additionalProperties: false
+      required: [hit, ttl_seconds]
+      properties:
+        hit: { type: boolean }
+        ttl_seconds: { type: integer, minimum: 1 }
+    MarketSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - count
+        - average_price
+        - median_price
+        - min_price
+        - max_price
+        - average_square_footage
+        - applied_filters
+        - cache
+        - request_id
+      properties:
+        count: { type: integer, minimum: 0 }
+        average_price: { type: [number, "null"] }
+        median_price: { type: [number, "null"] }
+        min_price: { type: [number, "null"] }
+        max_price: { type: [number, "null"] }
+        average_square_footage: { type: [number, "null"] }
+        applied_filters: { $ref: "#/components/schemas/AppliedFilters" }
+        cache: { $ref: "#/components/schemas/CacheInfo" }
+        request_id: { type: string, format: uuid }
+    MarketProperty:
+      allOf:
+        - $ref: "../schemas/common.yaml#/PropertyFeatures"
+        - type: object
+          required: [id, price]
+          properties:
+            id: { type: integer, minimum: 1 }
+            price: { type: number, exclusiveMinimum: 0 }
+    PropertyPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, size, total_items, total_pages, sort, applied_filters, request_id]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MarketProperty" }
+        page: { type: integer, minimum: 0 }
+        size: { type: integer, minimum: 1, maximum: 100 }
+        total_items: { type: integer, minimum: 0 }
+        total_pages: { type: integer, minimum: 0 }
+        sort: { type: string }
+        applied_filters: { $ref: "#/components/schemas/AppliedFilters" }
+        request_id: { type: string, format: uuid }
+    Segment:
+      type: object
+      additionalProperties: false
+      required: [key, label, count, average_price, median_price]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        count: { type: integer, minimum: 1 }
+        average_price: { type: number }
+        median_price: { type: number }
+    SegmentResponse:
+      type: object
+      additionalProperties: false
+      required: [group_by, segments, applied_filters, request_id]
+      properties:
+        group_by: { type: string, enum: [bedrooms, year_band, price_band] }
+        segments:
+          type: array
+          items: { $ref: "#/components/schemas/Segment" }
+        applied_filters: { $ref: "#/components/schemas/AppliedFilters" }
+        request_id: { type: string, format: uuid }
+    WhatIfRequest:
+      type: object
+      additionalProperties: false
+      required: [baseline, scenario]
+      properties:
+        baseline: { $ref: "../schemas/common.yaml#/PropertyFeatures" }
+        scenario: { $ref: "../schemas/common.yaml#/PropertyFeatures" }
+    WhatIfResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - baseline_prediction
+        - scenario_prediction
+        - absolute_difference
+        - percentage_difference
+        - model_version
+        - baseline_warnings
+        - scenario_warnings
+        - disclaimer
+        - request_id
+      properties:
+        baseline_prediction: { type: number, exclusiveMinimum: 0 }
+        scenario_prediction: { type: number, exclusiveMinimum: 0 }
+        absolute_difference: { type: number }
+        percentage_difference: { type: [number, "null"] }
+        model_version: { type: string }
+        baseline_warnings:
+          type: array
+          items: { $ref: "../schemas/common.yaml#/RangeWarning" }
+        scenario_warnings:
+          type: array
+          items: { $ref: "../schemas/common.yaml#/RangeWarning" }
+        disclaimer: { type: string }
+        request_id: { type: string, format: uuid }

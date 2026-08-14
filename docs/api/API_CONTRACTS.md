@@ -1,6 +1,6 @@
 # API 契约
 
-状态：设计基线，尚未实现。实现后的 OpenAPI 文件必须与本文一致；如有差异，先通过 ADR 更新设计。
+状态：ML API 与 Estimator API 已分别在 Phase 1/2 实现并完成本地及容器验证；Market API 仍为设计基线。实现后的 OpenAPI 必须与本文一致；如有差异，先通过 ADR 更新设计。
 
 ## 1. 通用约定
 

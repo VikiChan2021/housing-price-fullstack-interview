@@ -10,5 +10,4 @@
 - CSV/PDF 导出。
 - 有界、短 TTL 的聚合缓存。
 
-不得复制 Python 模型推理。当前目录没有应用代码。
-
+不得复制 Python 模型推理。Phase 0B 已建立 Java 21 / Spring Boot 3.4.4 最小工程、Maven Wrapper 和健康检查；业务实现尚未开始。

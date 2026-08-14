@@ -1,0 +1,182 @@
+openapi: 3.1.0
+info:
+  title: Housing Price Estimator API
+  version: 0.1.0
+  description: Business-facing estimate API backed by the ML API.
+  license:
+    name: Unlicensed interview exercise
+    identifier: LicenseRef-Unlicensed-Interview-Exercise
+servers:
+  - url: http://estimator-api:8001
+security: []
+paths:
+  /api/v1/estimates:
+    post:
+      operationId: createEstimate
+      summary: Create one housing estimate
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/PropertyFeatures"
+      responses:
+        "200":
+          description: Created estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateResponse"
+        "422":
+          $ref: "#/components/responses/ErrorResponse"
+        "502":
+          $ref: "#/components/responses/ErrorResponse"
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
+        "504":
+          $ref: "#/components/responses/ErrorResponse"
+  /api/v1/estimates/batch:
+    post:
+      operationId: createEstimateBatch
+      summary: Create an ordered batch of housing estimates
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              minItems: 1
+              maxItems: 100
+              items:
+                $ref: "../schemas/common.yaml#/PropertyFeatures"
+      responses:
+        "200":
+          description: Ordered estimate batch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateBatchResponse"
+        "413":
+          $ref: "#/components/responses/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ErrorResponse"
+        "502":
+          $ref: "#/components/responses/ErrorResponse"
+        "504":
+          $ref: "#/components/responses/ErrorResponse"
+  /health:
+    get:
+      operationId: getEstimatorHealth
+      summary: Report Estimator process and dependency health
+      responses:
+        "200":
+          description: Process health, which may be degraded
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "../schemas/common.yaml#/HealthResponse"
+                  - type: object
+                    required: [ml_api_status]
+                    properties:
+                      ml_api_status:
+                        type: string
+                        enum: [up, down]
+  /ready:
+    get:
+      operationId: getEstimatorReadiness
+      summary: Report whether the ML dependency is ready
+      responses:
+        "200":
+          description: Estimator and ML API are ready
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/common.yaml#/HealthResponse"
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
+components:
+  parameters:
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+  responses:
+    ErrorResponse:
+      description: Stable error envelope
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorEnvelope"
+  schemas:
+    EstimateBase:
+      type: object
+      additionalProperties: false
+      required:
+        - estimate_id
+        - property
+        - predicted_price
+        - model_version
+        - warnings
+        - created_at
+      properties:
+        estimate_id:
+          type: string
+          format: uuid
+        property:
+          $ref: "../schemas/common.yaml#/PropertyFeatures"
+        predicted_price:
+          type: number
+          exclusiveMinimum: 0
+        model_version:
+          type: string
+        warnings:
+          type: array
+          items:
+            $ref: "../schemas/common.yaml#/RangeWarning"
+        created_at:
+          type: string
+          format: date-time
+    EstimateResponse:
+      allOf:
+        - $ref: "#/components/schemas/EstimateBase"
+        - type: object
+          required: [request_id]
+          properties:
+            request_id:
+              type: string
+              format: uuid
+    IndexedEstimate:
+      allOf:
+        - $ref: "#/components/schemas/EstimateBase"
+        - type: object
+          required: [index]
+          properties:
+            index:
+              type: integer
+              minimum: 0
+    EstimateBatchResponse:
+      type: object
+      additionalProperties: false
+      required: [estimates, count, request_id]
+      properties:
+        estimates:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/IndexedEstimate"
+        count:
+          type: integer
+          minimum: 1
+          maximum: 100
+        request_id:
+          type: string
+          format: uuid

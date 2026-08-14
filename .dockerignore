@@ -1,0 +1,17 @@
+.git
+.idea
+.vscode
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/node_modules
+**/.next
+**/target
+data/processed
+models/*.joblib
+models/*.pkl
+models/*.onnx
+test-results
+playwright-report
