@@ -9,6 +9,11 @@
 **/node_modules
 **/.next
 **/target
+.corepack-cache
+.playwright-cli
+output
+tmp
+.env
 data/processed
 models/*.joblib
 models/*.pkl

@@ -95,7 +95,7 @@
 
 本地验收结果（2026-08-14）：14 项 Java 21 测试通过；源数据统计对账、真实 ML HTTP what-if、Caffeine 命中/隔离、CSV BOM/行数、PDF 文本提取与渲染、ML 断连降级和恢复均通过。公网验证未执行。
 
-## Phase 4：Next.js Portal（进行中）
+## Phase 4：Next.js Portal（已完成）
 
 任务：
 
@@ -113,7 +113,9 @@
 - 360px 和 1280px 视口均完成视觉检查。
 - 所有页面使用真实后端，不用硬编码假数据冒充集成完成。
 
-## Phase 5：Compose 集成与系统测试
+本地验收结果（2026-08-15）：目标 Node 环境的 lint、typecheck、生产构建与 7 项组件测试通过；真实 Chromium 在 1280x800/360x800 完成 Estimator、Market、下载、键盘主流程、错误边界和恢复。公网验证未执行。
+
+## Phase 5：Compose 集成与系统测试（已完成）
 
 任务：
 
@@ -129,7 +131,9 @@
 - 一条命令启动全部服务。
 - 所有展示功能在 Compose 网络中使用真实调用链。
 
-## Phase 6：交付与面试彩排
+本地验收结果（2026-08-15）：四镜像构建成功，`docker compose up -d --wait` 四容器 healthy；API smoke、真实浏览器估价/what-if/导出、ML 停止与恢复、`down` 后重新启动均通过。最终 GitHub 干净克隆尚未执行。
+
+## Phase 6：交付与面试彩排（进行中）
 
 任务：
 

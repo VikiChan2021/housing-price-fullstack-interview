@@ -1,6 +1,6 @@
 # 项目状态
 
-最后更新：2026-08-14
+最后更新：2026-08-15
 
 ## 已完成
 
@@ -14,15 +14,17 @@
 - 获得仓库所有者对 Phase 0B 和后续路线开发的明确批准。
 - 完成 Phase 0B：Python/Node/Java 最小工程、精确 lockfile/Maven Wrapper 和三份 OpenAPI 3.1 基线。
 - 在冻结的 Python 3.12.13、Node 24.18.0 和 Java 21 目标环境中通过最小 lint、类型检查、测试与构建；开发就绪 G6 为 PASS。
+- 完成 Phase 4 Portal：Estimator、Market、RSC 首屏、同源 BFF、本地历史/比较、what-if 与导出均已实现。
+- 完成 Phase 5 Compose：四个镜像、健康依赖、一条命令启动、真实调用链、故障注入、关闭与重新启动均已本地验证。
 
 ## 当前进行中
 
-- Phase 4：Next.js Portal。
+- Phase 6：交付文档、演示彩排与最终仓库验证。
 
-## 尚未开始
+## 尚未验证
 
-- Web Dockerfile 与 Docker Compose。
-- Portal 浏览器验收、全栈系统 E2E 和公网部署。
+- 最终变更提交后的 GitHub 干净克隆验证。
+- 公网部署与公网浏览器验收（可选）。
 
 ## 已有探索证据，不等于最终模型结果
 
@@ -51,6 +53,22 @@
 - 断开 ML 网络后 `/health` 返回 degraded，`/ready` 与 what-if 返回稳定 503 和请求标识；客户端测试另覆盖下游 HTTP 到 502、读超时到 504。重连后恢复 healthy。
 - 最终本地镜像：`sha256:47885a0370708c9b103bf08a5f9bd919c40c6bcb45851897df04e6ee7db3d5db`。公网部署仍未验证。
 
+## Phase 4 已验证结果
+
+- Web 在精确 Node 24.18.0 / pnpm 11.15.1 环境通过 ESLint、严格 TypeScript、生产构建和 7 项 Vitest 测试。
+- 真实 Chromium 完成 7 字段估价、两条历史比较、刷新后保留、市场筛选/统计/图表/排序、真实 what-if 以及 CSV/PDF 下载。
+- 1280x800 与 360x800 均已检查；移动端 `scrollWidth == clientWidth`，浏览器正常流程为 0 console 错误/0 警告。
+- Estimator 的 ML 断连错误、Market RSC 错误边界与恢复重试均已真实触发。预期 503/504 会被浏览器记录为失败资源，但页面有稳定可重试提示。
+
+## Phase 5 已验证结果
+
+- `docker compose config --quiet` 通过；四个镜像从根构建上下文生成，Web 使用 standalone 运行镜像，运行时不包含开发依赖树。
+- `docker compose up -d --wait` 按 ML → 两个业务 API → Web 的健康依赖启动，四容器均为 healthy。
+- Compose 网络中 ML 与 Estimator 对相同输入返回完全相同价格 `248849.64329890147` 和模型版本 `ridge-v1-0e36c622-a05bac12`；Market 基线为 50 条、平均价 264600。
+- Compose 下真实 Chromium 完成估价、Market RSC、what-if、CSV/PDF 下载；正常流程 console 为 0 错误/0 警告。
+- 停止 ML 后 Web readiness 返回 503 与请求 ID，Estimator 显示可重试错误；恢复 ML 后点击原错误的重试按钮成功。`docker compose down` 清除容器/网络后再次一条命令启动成功。
+- 本地浏览器截图、下载与构建日志已通过 `.gitignore`/`.dockerignore` 排除，不进入 Git 或 Docker 构建上下文。
+
 ## 下一步
 
-进入实施路线 Phase 4：实现 Next.js Portal 的共享导航、Estimator、Market Analysis、RSC 首屏、浏览器历史/比较、可访问性与组件测试。
+完成 Phase 6：检查最终 diff，提交后从 GitHub 干净克隆复跑 Compose，并按 8~12 分钟演示手册彩排。公网部署保持可选且当前未验证。

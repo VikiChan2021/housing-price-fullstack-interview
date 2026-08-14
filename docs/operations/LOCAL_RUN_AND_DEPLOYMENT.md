@@ -1,6 +1,6 @@
-# 本地运行与部署设计
+# 本地运行与部署
 
-状态：计划，Compose 和 Dockerfile 尚未实现，以下命令当前不可执行。
+状态：四服务 Dockerfile 与根 Compose 已实现，并于 2026-08-15 完成本地构建、健康等待、浏览器、故障恢复、关闭和重启验收。
 
 ## 1. 本地基线
 
@@ -14,19 +14,19 @@
 
 本地直接开发可额外安装 ADR-004 冻结的 Python 3.12.13、Java 21、Node.js 24.18.0、pnpm 11.15.1 和 Maven Wrapper 3.9.16，但不是 Compose 演示的必要条件。
 
-## 2. 计划命令
+## 2. 启动命令
 
-实现后 README 应验证：
+从仓库根目录执行：
 
 ```powershell
 docker compose config
-docker compose build
-docker compose up -d --wait
+docker compose up --build -d --wait
 docker compose ps
-docker compose down
 ```
 
-不能仅以 `docker compose up` 进程存在判断成功；还需 API smoke 和浏览器验收。
+默认入口：Portal `http://localhost:3000`，ML Swagger `http://localhost:8000/docs`。复制 `.env.example` 为 `.env` 可覆盖宿主机端口和超时；不要把 `.env` 提交到 Git。
+
+不能仅以进程存在判断成功；`--wait` 必须成功，且还需 API smoke 和浏览器验收。
 
 ## 3. 构建策略
 
@@ -63,11 +63,11 @@ flowchart TD
 | `MARKET_CACHE_MAX_ENTRIES` | Market | `256` | Caffeine 最大条目数 |
 | `LOG_LEVEL` | 全服务 | `INFO` | 日志级别 |
 
-实现时各运行时可以使用自己的变量前缀，但必须同步 `.env.example` 和本文档。
+Compose 内部地址固定使用服务发现；`.env.example` 仅作为可提交的非密钥覆盖模板。
 
 ## 6. Smoke 验证
 
-实现后至少验证：
+至少验证：
 
 - Web 首页返回 200。
 - 三个后端 `/health` 返回预期状态。
@@ -75,6 +75,24 @@ flowchart TD
 - 单条和批量预测成功。
 - Market summary 返回 50 条基线数据。
 - Estimator 页面提交成功。
+
+PowerShell 快速检查：
+
+```powershell
+Invoke-RestMethod http://localhost:3000/api/ready
+Invoke-RestMethod http://localhost:8000/health
+Invoke-RestMethod http://localhost:8001/health
+Invoke-RestMethod http://localhost:8080/health
+Invoke-RestMethod http://localhost:8080/api/v1/market/summary
+```
+
+停止：
+
+```powershell
+docker compose down
+```
+
+该命令只移除本项目 Compose 容器与网络，不删除源文件或本地镜像。
 
 ## 7. 公网部署
 
@@ -85,7 +103,7 @@ flowchart TD
 - 记录部署 commit、环境变量、区域和最后验证时间。
 - 免费平台可能休眠；面试现场仍保留本地 Compose 兜底。
 
-没有完成公网浏览器验收前，只能写“本地验证通过”。
+当前没有完成公网浏览器验收，只能写“本地验证通过”。
 
 ## 8. 常见排错顺序
 

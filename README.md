@@ -9,12 +9,12 @@
 | 原始题目与数据归档 | 已完成并校验 |
 | 需求、架构、接口、测试和实施文档 | 已完成开发前审计并获批准 |
 | 工程基线 | Phase 0B 已验证通过 |
-| 应用代码 | Phase 1~3 后端已完成本地验收；Phase 4 Portal 进行中 |
-| Docker/本地运行 | 三个业务后端镜像及跨容器 HTTP 已验证；Compose 尚未实现 |
-| 浏览器端到端验收 | 尚未执行 |
+| 应用代码 | Phase 1~4 已完成本地验收 |
+| Docker/本地运行 | 四服务 Compose 已实现并通过健康等待、关闭和重启验证 |
+| 浏览器端到端验收 | Estimator、Market、导出、故障与恢复已在真实 Chromium 验证 |
 | 公网部署 | 不在当前已验证范围 |
 
-不要把本文档中的目标架构、接口示例或验收条件描述为已经实现。
+本地验证不等于 GitHub 干净克隆或公网部署验证；两者当前仍未执行。
 
 ## 后续 AI 开发的阅读顺序
 
@@ -55,7 +55,7 @@
 
 ```text
 .
-├─ apps/web/                  # Next.js Portal，已有 Phase 0B 最小工程
+├─ apps/web/                  # Next.js Portal 与 standalone Dockerfile
 ├─ services/
 │  ├─ ml-api/                 # FastAPI 模型服务，Phase 1 已完成
 │  ├─ estimator-api/          # Python 估价业务服务，Phase 2 已完成
@@ -63,8 +63,8 @@
 ├─ packages/api-contracts/    # OpenAPI 3.1 与共享 schema 基线
 ├─ data/raw/                  # 原始 CSV，只读
 ├─ models/                    # 后续生成的模型产物，不提交大文件
-├─ infra/docker/              # 后续 Docker 配置
-├─ tests/e2e/                 # 后续端到端测试
+├─ infra/docker/              # Docker 约定
+├─ output/playwright/         # 本地浏览器证据，已被 Git 忽略
 ├─ docs/                      # 项目事实与设计的主要入口
 └─ references/original/       # 面试官原始题目，只读
 ```
@@ -78,6 +78,51 @@
 
 ## 开发启动条件
 
-文档决策和 Phase 0B 工程基线均已完成，G0~G6 为 PASS；运行证据见 [正式开发就绪审计](docs/development/DEVELOPMENT_READINESS.md)。Phase 1~3 后端已完成本地与容器验收，当前按路线实施 Phase 4。
+文档决策和 Phase 0B 工程基线均已完成，G0~G6 为 PASS；运行证据见 [正式开发就绪审计](docs/development/DEVELOPMENT_READINESS.md)。Phase 1~5 已完成本地、容器与真实浏览器验收，当前进入 Phase 6 交付整理。
 
 默认顺序为模型与 ML API、Estimator API、Market API、Next.js Portal、Compose 集成、真实浏览器验收。
+
+## 一键本地运行
+
+前置条件仅为 Git、Docker Desktop（含 Compose v2）以及可用端口 3000、8000、8001、8080：
+
+```powershell
+docker compose config
+docker compose up --build -d --wait
+docker compose ps
+```
+
+入口：
+
+- Portal：`http://localhost:3000`
+- ML Swagger：`http://localhost:8000/docs`
+- ML API：`http://localhost:8000`
+- Estimator API：`http://localhost:8001`
+- Market API：`http://localhost:8080`
+
+停止并移除本项目容器及网络：
+
+```powershell
+docker compose down
+```
+
+## 质量检查
+
+各组件使用冻结 lockfile/Maven Wrapper；完整策略见[测试策略](docs/testing/TEST_STRATEGY.md)。最短 Compose smoke 为：
+
+```powershell
+docker compose up -d --wait
+Invoke-RestMethod http://localhost:3000/api/ready
+Invoke-RestMethod http://localhost:8080/api/v1/market/summary
+```
+
+最近一次本地验收通过 14 项 ML 测试、13 项 Estimator 测试、14 项 Market 测试和 7 项 Web 测试，并完成四服务真实浏览器 E2E。公网与最终 GitHub 干净克隆仍标记为未验证。
+
+## 模型与产品限制
+
+- 模型只基于题目提供的 50 条演示数据，不是商业估价或金融建议。
+- 特征存在较强相关性，样本量小，训练范围外预测可靠性更低。
+- `id` 只用于标识，不参与训练；模型推理由 `ml-api` 单点负责。
+- 历史只保存在当前浏览器 localStorage；Market 缓存是可丢失的进程内 Caffeine。
+
+启动失败时按 ML → Estimator/Market → Web 的顺序检查 `docker compose ps` 和 `docker compose logs <service>`，并使用响应中的 `X-Request-ID` 关联排查。更详细步骤见[本地运行与部署](docs/operations/LOCAL_RUN_AND_DEPLOYMENT.md)。

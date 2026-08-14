@@ -13,6 +13,14 @@
 - 保留一组已知输入与预期数量级，不死记精确浮点值。
 - 准备截图或短录屏作为不可控环境故障的兜底证据。
 
+已验证的准备命令：
+
+```powershell
+docker compose up --build -d --wait
+docker compose ps
+Invoke-RestMethod http://localhost:3000/api/ready
+```
+
 ## 1. 30 秒开场
 
 说明系统目标和边界：这是 50 条演示数据上的技术项目，不是商业估价产品；重点是可解释模型、API 契约和 Python/Java/Next.js 集成。
@@ -33,9 +41,9 @@
 依次演示：
 
 1. `/health`。
-2. 单条 `/predict`。
-3. 批量 `/predict`。
-4. `/model-info` 的系数、指标、模型版本和限制。
+2. 单条 `/api/v1/predict`。
+3. 批量 `/api/v1/predict`。
+4. `/api/v1/model-info` 的系数、指标、模型版本和限制。
 5. 一个非法评分，展示 422 字段错误。
 
 ## 4. Estimator（2~3 分钟）
@@ -64,7 +72,17 @@
 
 ## 7. 准备的失败场景
 
-优先演示非法输入；只有经过彩排才停止 ML 容器演示下游错误。失败场景结束后必须能快速恢复。
+优先演示非法输入。停止 ML 的场景已在 Compose 与真实浏览器彩排：
+
+```powershell
+docker compose stop ml-api
+# 在 Estimator 再次提交，观察带 request ID 的可重试错误
+docker compose start ml-api
+docker compose up -d --wait
+# 点击原页面的 Retry last estimate
+```
+
+恢复后先确认 `http://localhost:3000/api/ready` 返回 200，再继续演示。
 
 ## 常见追问
 
@@ -90,4 +108,3 @@
 2. 用 health 和 Compose 状态定位是哪一层。
 3. 若短时间无法恢复，展示预先保存的截图/测试报告和代码结构。
 4. 清楚说明哪些是刚刚现场验证、哪些是之前本地验证。
-

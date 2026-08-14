@@ -5,7 +5,7 @@
 - 测试必须覆盖真实风险：数据 schema、模型顺序、服务契约、下游失败、缓存键、浏览器状态和导出。
 - 单元测试不能代替容器和浏览器验收。
 - 每个关键结果都能追溯到源数据或明确计算。
-- Phase 0B 工程基线、Phase 1 ML API、Phase 2 Estimator API 与 Phase 3 Market API 测试已运行；Portal、Compose 和系统 E2E 测试仍为计划。
+- Phase 0B 工程基线、Phase 1~4 组件测试、Phase 5 Compose 与系统浏览器 E2E 均已运行；GitHub 干净克隆和公网测试仍未运行。
 
 ## 2. 测试层级
 
@@ -101,7 +101,7 @@ flowchart TD
 - 下载 CSV/PDF 并检查文件内容。
 - 停止 ML 服务，验证错误与恢复。
 
-建议工具：Playwright；可访问性使用 axe 或等价工具。精确版本在批准后的 Phase 0B 锁定。
+实际浏览器验收使用 Playwright CLI 控制真实 Chrome，并检查 DOM、键盘、console、network、下载和 360/1280 视口。语义与键盘检查已完成；独立 axe 扫描未执行，不把它描述为已验证。
 
 ## 7. 契约测试
 
@@ -130,3 +130,13 @@ flowchart TD
 - 通过/失败/跳过数量。
 - 浏览器与视口。
 - 未执行边界，例如公网部署。
+
+## 10. 最近一次 Phase 4/5 本地结果（2026-08-15）
+
+- Web：ESLint、TypeScript、Next production build、3 个测试文件/7 项测试 PASS。
+- Compose：四镜像 build PASS；四容器 `up -d --wait` healthy；`down` 后重新启动 PASS。
+- API smoke：ML 与 Estimator 同输入价格一致；Market 50 行/平均价 264600；Web readiness healthy。
+- Chrome：Estimator、Market RSC、what-if、CSV/PDF 下载 PASS；正常 console 0 错误/0 警告。
+- 故障注入：停止 ML 后 readiness 503、页面可重试；恢复后原页面重试成功。
+- 视口：1280x800 与 360x800；移动页 `scrollWidth == clientWidth`。
+- 未运行：最终 GitHub 干净克隆、独立 axe 扫描、公网部署。

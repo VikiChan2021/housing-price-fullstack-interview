@@ -9,11 +9,13 @@ RUN --mount=type=cache,target=/pnpm/store pnpm config set store-dir /pnpm/store 
     && pnpm install --frozen-lockfile
 
 COPY apps/web ./
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
 FROM node@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runtime
 
 ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \
     PORT=3000 \
     ESTIMATOR_API_BASE_URL=http://estimator-api:8001 \
