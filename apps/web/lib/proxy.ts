@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { WEB_API_TIMEOUT_MS } from "./config";
+
 const forwardedResponseHeaders = ["content-type", "content-disposition", "x-request-id"];
 
 export async function proxyRequest(request: Request, target: URL): Promise<Response> {
@@ -13,7 +15,7 @@ export async function proxyRequest(request: Request, target: URL): Promise<Respo
         "X-Request-ID": requestId,
       },
       cache: "no-store",
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(WEB_API_TIMEOUT_MS),
     });
     const headers = new Headers();
     for (const name of forwardedResponseHeaders) {

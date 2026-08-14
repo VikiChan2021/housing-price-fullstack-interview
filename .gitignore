@@ -21,8 +21,12 @@ coverage/
 playwright-report/
 test-results/
 .pnpm-store/
+.corepack-cache/
 .playwright-cli/
 *.tsbuildinfo
+
+# Local browser acceptance artifacts
+output/playwright/
 
 # Java / Gradle / Maven
 target/

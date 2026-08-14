@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { SiteNav } from "@/components/site-nav";
@@ -17,7 +18,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <a className="skip-link" href="#main-content">Skip to content</a>
         <header className="site-header">
           <div className="header-inner">
-            <a className="brand" href="/">Hearth &amp; Metric</a>
+            <Link className="brand" href="/">Hearth &amp; Metric</Link>
             <SiteNav />
           </div>
         </header>

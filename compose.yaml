@@ -1,0 +1,65 @@
+name: housing-price-interview
+
+services:
+  ml-api:
+    build:
+      context: .
+      dockerfile: services/ml-api/Dockerfile
+    image: housing-price-ml-api:local
+    ports:
+      - "${ML_API_PORT:-8000}:8000"
+    init: true
+    restart: unless-stopped
+
+  estimator-api:
+    build:
+      context: .
+      dockerfile: services/estimator-api/Dockerfile
+    image: housing-price-estimator-api:local
+    environment:
+      ML_API_BASE_URL: http://ml-api:8000
+      ML_API_TIMEOUT_SECONDS: "${ML_API_TIMEOUT_SECONDS:-5}"
+    ports:
+      - "${ESTIMATOR_API_PORT:-8001}:8001"
+    depends_on:
+      ml-api:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped
+
+  market-api:
+    build:
+      context: .
+      dockerfile: services/market-api/Dockerfile
+    image: housing-price-market-api:local
+    environment:
+      ML_API_BASE_URL: http://ml-api:8000
+      ML_API_TIMEOUT_SECONDS: "${ML_API_TIMEOUT_SECONDS:-5}"
+      MARKET_CACHE_TTL_SECONDS: "${MARKET_CACHE_TTL_SECONDS:-300}"
+      MARKET_CACHE_MAX_ENTRIES: "${MARKET_CACHE_MAX_ENTRIES:-256}"
+    ports:
+      - "${MARKET_API_PORT:-8080}:8080"
+    depends_on:
+      ml-api:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: housing-price-web:local
+    environment:
+      ESTIMATOR_API_BASE_URL: http://estimator-api:8001
+      MARKET_API_BASE_URL: http://market-api:8080
+      WEB_API_TIMEOUT_SECONDS: "${WEB_API_TIMEOUT_SECONDS:-10}"
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      estimator-api:
+        condition: service_healthy
+      market-api:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped

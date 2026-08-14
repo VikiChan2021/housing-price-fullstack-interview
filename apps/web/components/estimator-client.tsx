@@ -54,7 +54,10 @@ export function EstimatorClient() {
       const stored = localStorage.getItem(historyKey);
       if (!stored) return;
       const envelope = JSON.parse(stored) as { version?: number; estimates?: Estimate[] };
-      if (envelope.version === 1 && Array.isArray(envelope.estimates)) setHistory(envelope.estimates.slice(0, 20));
+      if (envelope.version === 1 && Array.isArray(envelope.estimates)) {
+        const restored = envelope.estimates.slice(0, 20);
+        queueMicrotask(() => setHistory(restored));
+      }
     } catch {
       localStorage.removeItem(historyKey);
     }
