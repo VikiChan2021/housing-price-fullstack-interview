@@ -101,7 +101,7 @@ flowchart TD
 - 下载 CSV/PDF 并检查文件内容。
 - 停止 ML 服务，验证错误与恢复。
 
-建议工具：Playwright；可访问性使用 axe 或等价工具。精确版本在 Phase 0 锁定。
+建议工具：Playwright；可访问性使用 axe 或等价工具。精确版本在批准后的 Phase 0B 锁定。
 
 ## 7. 契约测试
 

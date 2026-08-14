@@ -2,22 +2,40 @@
 
 原则：一次完成一个可验证的纵向阶段。所有任务引用需求/验收 ID；每阶段退出前更新 `docs/PROJECT_STATUS.md`。
 
-## Phase 0：冻结决策与契约
+## Phase 0A：文档决策与批准门（已完成文档，等待批准）
 
 任务：
 
 - 阅读原题、需求、ADR 和 API 契约。
 - 确认精确 Node/Next.js、Python 包和 Java 构建工具版本。
-- 为 Python、Node、Java 创建 lockfile。
-- 将 API 契约转换为初始 OpenAPI schema 或契约测试 fixtures。
 - 定义统一错误代码、请求 ID 和环境变量命名。
+- 固定输入硬边界、模型评估协议和正式开发就绪门。
+- 获得仓库所有者明确批准。
 
 退出条件：
 
-- ADR 均为 Accepted 或明确 Deferred。
-- 依赖版本可在目标开发机安装。
+- ADR 均为 Accepted 或明确 Deferred：已满足。
+- 人类可读契约不存在关键语义歧义：已满足。
+- 开发就绪审计 G0~G4 为 PASS：已满足。
+- 所有者批准：等待中。
+
+## Phase 0B：工程基线（仅在批准后执行）
+
+任务：
+
+- 创建 Python、Node 和 Java 最小工程脚手架与 lockfile。
+- 将 API 契约转换为初始 OpenAPI/JSON Schema 或契约测试 fixtures。
+- 校验成功/失败示例、错误 envelope 和字段路径。
+- 固定 Docker 基础镜像 tag/digest，验证目标工具链和冻结安装。
+- 运行最小 lint、type-check、test、build，不编写业务功能。
+
+退出条件：
+
+- `DEVELOPMENT_READINESS.md` 的 G6 为 PASS。
+- 依赖版本可在目标开发机或目标容器中安装。
 - API 示例可以通过 schema 校验。
-- 尚不需要 UI，但不得有契约歧义。
+- 三类空项目均可构建，且 lockfile 已纳入版本控制。
+- 不得有契约歧义；失败时先更新 ADR/文档，不进入 Phase 1。
 
 ## Phase 1：数据、模型和 ML API
 
@@ -137,4 +155,3 @@
 7. `docs: finalize interview runbook`
 
 不要把未通过验收的阶段混入“项目完成”提交。
-

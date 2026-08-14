@@ -12,7 +12,7 @@
 - Docker Desktop 或兼容 Docker Engine，Compose v2。
 - 可用端口 3000、8000、8001、8080。
 
-本地直接开发可额外安装 Python 3.12+、Java 21 和与选定 Next.js 兼容的 Node.js，但不是 Compose 演示的必要条件。
+本地直接开发可额外安装 ADR-004 冻结的 Python 3.12.13、Java 21、Node.js 24.18.0、pnpm 11.15.1 和 Maven Wrapper 3.9.16，但不是 Compose 演示的必要条件。
 
 ## 2. 计划命令
 
@@ -55,7 +55,12 @@ flowchart TD
 | `ESTIMATOR_API_BASE_URL` | Web server | `http://estimator-api:8001` | Estimator 内网地址 |
 | `MARKET_API_BASE_URL` | Web server | `http://market-api:8080` | Market 内网地址 |
 | `ML_API_TIMEOUT_SECONDS` | 两个业务后端 | `5` | 下游总超时 |
+| `WEB_API_TIMEOUT_SECONDS` | Web server | `10` | BFF/Server Component 后端总超时 |
+| `ML_MODEL_PATH` | ML API | `/app/models/model.joblib` | 只读模型产物路径 |
+| `ML_METADATA_PATH` | ML API | `/app/models/metadata.json` | 只读模型元数据路径 |
+| `MARKET_DATA_PATH` | Market API | `/app/data/house-price-dataset.csv` | 容器内只读市场数据路径 |
 | `MARKET_CACHE_TTL_SECONDS` | Market | `300` | Caffeine TTL |
+| `MARKET_CACHE_MAX_ENTRIES` | Market | `256` | Caffeine 最大条目数 |
 | `LOG_LEVEL` | 全服务 | `INFO` | 日志级别 |
 
 实现时各运行时可以使用自己的变量前缀，但必须同步 `.env.example` 和本文档。
@@ -90,4 +95,3 @@ flowchart TD
 4. 先验证 ML，再验证 Estimator/Market，最后验证 Web。
 5. 用请求 ID关联服务日志。
 6. 检查 CSV/model 是否存在且 SHA-256 正确。
-

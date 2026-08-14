@@ -26,6 +26,7 @@
 
 ## 开发
 
+- [正式开发就绪审计](development/DEVELOPMENT_READINESS.md)
 - [实施路线](development/IMPLEMENTATION_ROADMAP.md)
 - [编码与协作规范](development/CODING_STANDARDS.md)
 
@@ -48,4 +49,3 @@
 - 改动服务边界、数据持久化、模型选择或部署方式时新增 ADR。
 - 每次里程碑完成后更新 `PROJECT_STATUS.md` 与追踪矩阵。
 - 示例响应应与正式 OpenAPI 保持一致；实现后以生成的 OpenAPI 为机器可读真相。
-
