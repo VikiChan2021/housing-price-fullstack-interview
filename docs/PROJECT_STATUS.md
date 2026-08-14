@@ -17,13 +17,12 @@
 
 ## 当前进行中
 
-- Phase 3：Java/Spring Boot `market-api`。
+- Phase 4：Next.js Portal。
 
 ## 尚未开始
 
-- Next.js Portal。
-- Market/Web Dockerfile 与 Docker Compose。
-- 业务自动化测试、浏览器验收和公网部署。
+- Web Dockerfile 与 Docker Compose。
+- Portal 浏览器验收、全栈系统 E2E 和公网部署。
 
 ## 已有探索证据，不等于最终模型结果
 
@@ -43,6 +42,15 @@
 - 断开 ML 网络时返回稳定 `504 UPSTREAM_TIMEOUT`，MockTransport 另覆盖连接不可用 503、下游 4xx/5xx 到 502 和畸形响应。
 - Estimator 镜像确认不含 sklearn 或模型文件；浏览器历史仍按 ADR-003 留给 Web 本地存储。
 
+## Phase 3 已验证结果
+
+- Market API 通过 14 项 Java 21 测试；覆盖数据校验、聚合/筛选/分页/排序、Caffeine 缓存、snake_case ML 合约、HTTP 502/504 映射和 CSV/PDF 导出。
+- 源 CSV 的 50 行统计已对账：平均价 `264600`、中位价 `245000`、最低价 `160000`、最高价 `410000`、平均面积 `1690.2`。
+- 真实 Java 容器通过 HTTP 调用真实 ML 容器完成两条有序 what-if；重复摘要由 `cache.hit=false` 变为 `true`，不同筛选键未串数据。
+- CSV 具备 UTF-8 BOM、固定表头和全部筛选行；最终 PDF 包含标题、筛选条件、匹配数、平均/中位/价格范围，并完成文本提取与 PNG 渲染检查。
+- 断开 ML 网络后 `/health` 返回 degraded，`/ready` 与 what-if 返回稳定 503 和请求标识；客户端测试另覆盖下游 HTTP 到 502、读超时到 504。重连后恢复 healthy。
+- 最终本地镜像：`sha256:47885a0370708c9b103bf08a5f9bd919c40c6bcb45851897df04e6ee7db3d5db`。公网部署仍未验证。
+
 ## 下一步
 
-进入实施路线 Phase 3：实现 Java 数据集加载、筛选/聚合/导出/Caffeine 缓存、ML HTTP what-if、Dockerfile 和相应测试。
+进入实施路线 Phase 4：实现 Next.js Portal 的共享导航、Estimator、Market Analysis、RSC 首屏、浏览器历史/比较、可访问性与组件测试。

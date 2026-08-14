@@ -42,10 +42,21 @@ public class ExportService {
             lines.add("Generated UTC: " + generatedAt);
             lines.add("Filters: " + (filters.isEmpty() ? "none" : filters));
             lines.add("Matching properties: " + rows.size());
-            lines.add("");
             if (rows.isEmpty()) {
+                lines.add("");
                 lines.add("No matching data");
             } else {
+                List<Double> prices = rows.stream().map(MarketProperty::price).sorted().toList();
+                double averagePrice = prices.stream().mapToDouble(Double::doubleValue)
+                        .average().orElseThrow();
+                double medianPrice = prices.size() % 2 == 0
+                        ? (prices.get(prices.size() / 2 - 1) + prices.get(prices.size() / 2)) / 2
+                        : prices.get(prices.size() / 2);
+                lines.add(String.format(Locale.ROOT, "Average price: $%.2f", averagePrice));
+                lines.add(String.format(Locale.ROOT, "Median price: $%.2f", medianPrice));
+                lines.add(String.format(Locale.ROOT, "Price range: $%.2f - $%.2f",
+                        prices.getFirst(), prices.getLast()));
+                lines.add("");
                 lines.add("ID | Sq Ft | Beds | Baths | Year | Price");
                 for (MarketProperty row : rows) {
                     lines.add(String.format(Locale.ROOT, "%d | %.0f | %d | %.1f | %d | $%.2f",

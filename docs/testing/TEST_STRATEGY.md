@@ -5,7 +5,7 @@
 - 测试必须覆盖真实风险：数据 schema、模型顺序、服务契约、下游失败、缓存键、浏览器状态和导出。
 - 单元测试不能代替容器和浏览器验收。
 - 每个关键结果都能追溯到源数据或明确计算。
-- Phase 0B 工程基线、Phase 1 ML API 与 Phase 2 Estimator API 测试已运行；Market、Portal、Compose 和系统 E2E 测试仍为计划。
+- Phase 0B 工程基线、Phase 1 ML API、Phase 2 Estimator API 与 Phase 3 Market API 测试已运行；Portal、Compose 和系统 E2E 测试仍为计划。
 
 ## 2. 测试层级
 

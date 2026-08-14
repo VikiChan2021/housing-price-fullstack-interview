@@ -36,7 +36,9 @@ class ExportServiceTest {
         try (PDDocument document = Loader.loadPDF(pdf)) {
             String text = new PDFTextStripper().getText(document);
             assertThat(document.getNumberOfPages()).isGreaterThanOrEqualTo(2);
-            assertThat(text).contains("Housing Market Export", "Generated UTC", "Matching properties: 50");
+            assertThat(text).contains("Housing Market Export", "Generated UTC",
+                    "Matching properties: 50", "Average price: $264600.00",
+                    "Median price: $245000.00", "Price range: $160000.00 - $410000.00");
         }
     }
 

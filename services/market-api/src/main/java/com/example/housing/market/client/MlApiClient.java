@@ -56,6 +56,9 @@ public class MlApiClient {
             }
             throw new UpstreamUnavailableException("ML API is unavailable", exception);
         } catch (RestClientException exception) {
+            if (hasTimeoutCause(exception)) {
+                throw new UpstreamTimeoutException("ML API request timed out", exception);
+            }
             throw new UpstreamBadGatewayException("ML API returned an invalid response", exception);
         }
     }

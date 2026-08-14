@@ -1,10 +1,10 @@
 # 需求追踪矩阵
 
-Phase 0B 的工程基线测试已运行；下表的业务验收证据仍为计划状态，实现时将测试文件或测试用例 ID 填入“证据”列。
+Phase 0B 工程基线与 Phase 1~3 后端验收已运行；Portal、Compose 和系统 E2E 证据仍为计划状态，实现时将测试文件或测试用例 ID 填入“证据”列。
 
 工程基线证据：两个 Python 服务的 health/ready 测试、Web 首页测试和 Java health/ready MVC 测试均已通过；三份 OpenAPI 3.1 基线已通过 lint，冻结目标环境构建结果记录在 `docs/development/DEVELOPMENT_READINESS.md`。这些证据不替代下表对应的业务、容器或浏览器验收。
 
-| 需求 | 责任组件 | 主要验收 | 计划证据 |
+| 需求 | 责任组件 | 主要验收 | 证据/计划 |
 |---|---|---|---|
 | SYS-001~003 | `apps/web`、三个服务 | AC-401、AC-503 | Portal E2E + 服务调用日志 |
 | ML-001 | `services/ml-api` | AC-101、AC-102 | PASS：`test_data.py`、`test_training.py`、`models/metadata.json` |
@@ -16,7 +16,7 @@ Phase 0B 的工程基线测试已运行；下表的业务验收证据仍为计�
 | EST-004~005 | `apps/web` | AC-204~205 | localStorage/比较 E2E |
 | EST-006~007 | `estimator-api` | AC-206 | 后端 PASS：13 项测试、真实 ML HTTP 集成、断网故障注入；UI 部分 NOT RUN |
 | MKT-001~005 | `apps/web` | AC-301~305 | Market E2E + 导出文件检查 |
-| MKT-006~010 | `market-api` | AC-306~307 | Spring 集成测试 + 缓存指标/日志 |
+| MKT-006~010 | `market-api` | AC-306~307 | PASS：14 项 Java 测试、真实 ML HTTP、缓存命中/隔离、断网降级/恢复；Portal 呈现 NOT RUN |
 | WEB-001~004 | `apps/web` | AC-301、AC-402~403 | 路由/渲染测试 + 架构说明 |
 | WEB-005~009 | `apps/web` | AC-401~406 | Playwright + axe + 截图 |
 | DEL-001 | 根仓库 | AC-001、AC-504 | GitHub 链接 + 克隆验证 |

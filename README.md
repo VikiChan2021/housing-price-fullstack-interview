@@ -9,8 +9,8 @@
 | 原始题目与数据归档 | 已完成并校验 |
 | 需求、架构、接口、测试和实施文档 | 已完成开发前审计并获批准 |
 | 工程基线 | Phase 0B 已验证通过 |
-| 应用代码 | Phase 1（模型与 ML API）进行中 |
-| Docker/本地运行 | 工具链已验证；业务镜像与 Compose 尚未实现 |
+| 应用代码 | Phase 1~3 后端已完成本地验收；Phase 4 Portal 进行中 |
+| Docker/本地运行 | 三个业务后端镜像及跨容器 HTTP 已验证；Compose 尚未实现 |
 | 浏览器端到端验收 | 尚未执行 |
 | 公网部署 | 不在当前已验证范围 |
 
@@ -57,9 +57,9 @@
 .
 ├─ apps/web/                  # Next.js Portal，已有 Phase 0B 最小工程
 ├─ services/
-│  ├─ ml-api/                 # FastAPI 模型服务，Phase 1 进行中
-│  ├─ estimator-api/          # Python 估价业务服务，已有最小工程
-│  └─ market-api/             # Spring Boot 市场服务，已有最小工程
+│  ├─ ml-api/                 # FastAPI 模型服务，Phase 1 已完成
+│  ├─ estimator-api/          # Python 估价业务服务，Phase 2 已完成
+│  └─ market-api/             # Spring Boot 市场服务，Phase 3 已完成
 ├─ packages/api-contracts/    # OpenAPI 3.1 与共享 schema 基线
 ├─ data/raw/                  # 原始 CSV，只读
 ├─ models/                    # 后续生成的模型产物，不提交大文件
@@ -78,6 +78,6 @@
 
 ## 开发启动条件
 
-文档决策和 Phase 0B 工程基线均已完成，G0~G6 为 PASS；运行证据见 [正式开发就绪审计](docs/development/DEVELOPMENT_READINESS.md)。当前按路线实施 Phase 1。
+文档决策和 Phase 0B 工程基线均已完成，G0~G6 为 PASS；运行证据见 [正式开发就绪审计](docs/development/DEVELOPMENT_READINESS.md)。Phase 1~3 后端已完成本地与容器验收，当前按路线实施 Phase 4。
 
 默认顺序为模型与 ML API、Estimator API、Market API、Next.js Portal、Compose 集成、真实浏览器验收。

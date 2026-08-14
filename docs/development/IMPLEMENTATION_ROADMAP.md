@@ -74,7 +74,7 @@
 - Estimator 中没有 sklearn 或模型文件依赖。
 - ML API 停止时错误稳定、日志可关联。
 
-## Phase 3：Market API（进行中）
+## Phase 3：Market API（已完成）
 
 任务：
 
@@ -93,7 +93,9 @@
 - 可证明缓存命中且不同筛选条件不会串数据。
 - CSV/PDF 导出内容可读取、非空。
 
-## Phase 4：Next.js Portal
+本地验收结果（2026-08-14）：14 项 Java 21 测试通过；源数据统计对账、真实 ML HTTP what-if、Caffeine 命中/隔离、CSV BOM/行数、PDF 文本提取与渲染、ML 断连降级和恢复均通过。公网验证未执行。
+
+## Phase 4：Next.js Portal（进行中）
 
 任务：
 

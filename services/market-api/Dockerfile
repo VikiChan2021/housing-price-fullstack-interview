@@ -2,9 +2,9 @@ FROM maven@sha256:c07f7ccfb8ca6c9fa29ee523f00afa7d2ca6132c92f8652c4aebb5ee3491f5
 
 WORKDIR /build
 COPY services/market-api/pom.xml ./
-RUN mvn --batch-mode dependency:go-offline
 COPY services/market-api/src ./src
-RUN mvn --batch-mode package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 \
+  mvn --batch-mode package -Dmaven.test.skip=true
 
 FROM maven@sha256:c07f7ccfb8ca6c9fa29ee523f00afa7d2ca6132c92f8652c4aebb5ee3491f502 AS runtime
 
