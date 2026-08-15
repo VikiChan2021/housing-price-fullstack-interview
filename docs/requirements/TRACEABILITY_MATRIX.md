@@ -1,6 +1,6 @@
 # 需求追踪矩阵
 
-Phase 0B 工程基线、Phase 1~4 应用验收和 Phase 5 Compose/系统 E2E 已运行；最终 GitHub 干净克隆与公网证据仍未运行。
+Phase 0B 工程基线、Phase 1~4 应用验收、Phase 5 Compose/系统 E2E 与腾讯云公网验收已运行；最终 GitHub 干净克隆仍未运行。
 
 工程基线证据：两个 Python 服务的 health/ready 测试、Web 首页测试和 Java health/ready MVC 测试均已通过；三份 OpenAPI 3.1 基线已通过 lint，冻结目标环境构建结果记录在 `docs/development/DEVELOPMENT_READINESS.md`。这些证据不替代下表对应的业务、容器或浏览器验收。
 
@@ -22,7 +22,7 @@ Phase 0B 工程基线、Phase 1~4 应用验收和 Phase 5 Compose/系统 E2E 已
 | DEL-001 | 根仓库 | AC-001、AC-504 | README PASS；最终 GitHub 干净克隆 NOT RUN |
 | DEL-002 | `ml-api` | AC-002 | PASS：Dockerfile + Compose 构建日志 |
 | DEL-003 | `ml-api` | AC-108、AC-505 | Swagger PASS；完整计时演示 NOT RUN |
-| DEL-004 | 全系统 | AC-503、AC-505 | Compose E2E/本地截图 PASS；完整计时演示 NOT RUN |
+| DEL-004 | 全系统 | AC-503、AC-505 | Compose E2E + 腾讯云公网 Chrome/截图 PASS；完整计时演示 NOT RUN |
 
 ## 更新规则
 

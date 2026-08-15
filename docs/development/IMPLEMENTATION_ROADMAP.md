@@ -141,7 +141,7 @@
 - 添加示例 curl 和 Swagger 截图。
 - 执行演示手册，控制在 8~12 分钟。
 - 准备离线兜底：镜像预构建、端口检查、截图或短录屏。
-- 可选：GitHub Actions 和公网部署。
+- 可选：GitHub Actions 和公网部署（腾讯云公网部署已完成）。
 
 退出条件：
 
@@ -149,6 +149,8 @@
 - GitHub 干净克隆验证通过。
 - `PROJECT_STATUS.md` 不含虚假的已验证声明。
 - 面试者可以解释架构取舍、模型限制和一个失败场景。
+
+腾讯云结果（2026-08-15）：已部署至 `https://kandian.site/housing`，四容器 healthy；公网 Chrome 的 Estimator、Market、what-if、导出、桌面/移动与旧站回归均通过。Phase 6 仍等待最终 GitHub 干净克隆和完整计时彩排。
 
 ## 建议提交节奏
 

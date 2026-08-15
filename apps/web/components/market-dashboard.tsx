@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 
+import { withBasePath } from "@/lib/base-path";
 import type { MarketInitialData, PropertyFeatures, WhatIfResponse } from "@/lib/types";
 
 type Filters = { min_price: string; max_price: string; bedrooms: string; min_square_footage: string };
@@ -27,7 +28,7 @@ function queryFor(filters: Filters): URLSearchParams {
 }
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(path, options);
+  const response = await fetch(withBasePath(path), options);
   const type = response.headers.get("content-type") ?? "";
   const payload = type.includes("json") ? await response.json() as unknown : null;
   if (!response.ok) {
@@ -127,7 +128,7 @@ export function MarketDashboard({ initialData }: { initialData: MarketInitialDat
       <section className="panel" aria-labelledby="filters-title">
         <div className="panel-heading">
           <div><p className="eyebrow">Dataset controls</p><h2 id="filters-title">Refine the market</h2></div>
-          <div className="export-links"><a href={`/api/market/export?format=csv${exportQuery ? `&${exportQuery}` : ""}`}>Export CSV</a><a href={`/api/market/export?format=pdf${exportQuery ? `&${exportQuery}` : ""}`}>Export PDF</a></div>
+          <div className="export-links"><a href={withBasePath(`/api/market/export?format=csv${exportQuery ? `&${exportQuery}` : ""}`)}>Export CSV</a><a href={withBasePath(`/api/market/export?format=pdf${exportQuery ? `&${exportQuery}` : ""}`)}>Export PDF</a></div>
         </div>
         <form className="filter-row" onSubmit={applyFilters}>
           <div className="field"><label htmlFor="min-price">Minimum price</label><input id="min-price" type="number" min="0" placeholder="Any" value={filters.min_price} onChange={(event) => setFilters({ ...filters, min_price: event.target.value })} /></div>

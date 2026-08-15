@@ -12,9 +12,9 @@
 | 应用代码 | Phase 1~4 已完成本地验收 |
 | Docker/本地运行 | 四服务 Compose 已实现并通过健康等待、关闭和重启验证 |
 | 浏览器端到端验收 | Estimator、Market、导出、故障与恢复已在真实 Chromium 验证 |
-| 公网部署 | 不在当前已验证范围 |
+| 公网部署 | 腾讯云已部署并通过真实 Chrome 验收：[kandian.site/housing](https://kandian.site/housing) |
 
-本地验证不等于 GitHub 干净克隆或公网部署验证；两者当前仍未执行。
+本地与腾讯云公网验证均已执行；最终 GitHub 干净克隆仍未执行。
 
 ## 后续 AI 开发的阅读顺序
 
@@ -116,7 +116,14 @@ Invoke-RestMethod http://localhost:3000/api/ready
 Invoke-RestMethod http://localhost:8080/api/v1/market/summary
 ```
 
-最近一次本地验收通过 14 项 ML 测试、13 项 Estimator 测试、14 项 Market 测试和 7 项 Web 测试，并完成四服务真实浏览器 E2E。公网与最终 GitHub 干净克隆仍标记为未验证。
+最近一次本地验收通过 14 项 ML 测试、13 项 Estimator 测试、14 项 Market 测试和 7 项 Web 测试，并完成四服务真实浏览器 E2E。腾讯云公网已验证 Estimator、Market RSC、what-if、CSV/PDF、桌面/移动布局和旧站回归；最终 GitHub 干净克隆仍标记为未验证。
+
+## 公网地址
+
+- 房价项目：<https://kandian.site/housing>
+- 原“看点名著”：<https://kandian.site/zh-CN/>
+
+公网使用同一域名证书。Nginx 仅将 `/housing` 子路径代理到独立 Compose Web 容器，原站根路径和 `/api/` 路由不变；生产拓扑与回滚说明见 [Tencent Cloud deployment](infra/tencent/README.md)。
 
 ## 模型与产品限制
 

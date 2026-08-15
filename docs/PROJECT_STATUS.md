@@ -16,6 +16,7 @@
 - 在冻结的 Python 3.12.13、Node 24.18.0 和 Java 21 目标环境中通过最小 lint、类型检查、测试与构建；开发就绪 G6 为 PASS。
 - 完成 Phase 4 Portal：Estimator、Market、RSC 首屏、同源 BFF、本地历史/比较、what-if 与导出均已实现。
 - 完成 Phase 5 Compose：四个镜像、健康依赖、一条命令启动、真实调用链、故障注入、关闭与重新启动均已本地验证。
+- 完成腾讯云公网部署：`https://kandian.site/housing` 复用现有域名/证书，通过独立 Compose 与 Nginx 子路径隔离运行。
 
 ## 当前进行中
 
@@ -24,7 +25,7 @@
 ## 尚未验证
 
 - 最终变更提交后的 GitHub 干净克隆验证。
-- 公网部署与公网浏览器验收（可选）。
+- 8~12 分钟人工计时演示彩排。
 
 ## 已有探索证据，不等于最终模型结果
 
@@ -35,7 +36,7 @@
 - 模型版本：`ridge-v1-0e36c622-a05bac12`；训练数据 SHA-256 与原始资料清单一致。
 - Nested 5-fold CV：R² `0.984720 ± 0.004843`，MAE `7378.35 ± 1481.66`，RMSE `9311.09 ± 2144.91`；数值来自训练脚本及 `models/metadata.json`。
 - 14 项 ML 测试通过，覆盖率 87.78%；冻结镜像构建、健康检查、真实 HTTP 与 Chromium Swagger “Try it out” 通过。
-- 此处只声明本地与容器验证；公网部署仍未验证。
+- Phase 1 当时只声明本地与容器验证；当前模型推理已通过 Portal 公网真实调用链验证，ML API 本身按设计不直接暴露公网。
 
 ## Phase 2 已验证结果
 
@@ -51,7 +52,7 @@
 - 真实 Java 容器通过 HTTP 调用真实 ML 容器完成两条有序 what-if；重复摘要由 `cache.hit=false` 变为 `true`，不同筛选键未串数据。
 - CSV 具备 UTF-8 BOM、固定表头和全部筛选行；最终 PDF 包含标题、筛选条件、匹配数、平均/中位/价格范围，并完成文本提取与 PNG 渲染检查。
 - 断开 ML 网络后 `/health` 返回 degraded，`/ready` 与 what-if 返回稳定 503 和请求标识；客户端测试另覆盖下游 HTTP 到 502、读超时到 504。重连后恢复 healthy。
-- 最终本地镜像：`sha256:47885a0370708c9b103bf08a5f9bd919c40c6bcb45851897df04e6ee7db3d5db`。公网部署仍未验证。
+- 最终本地镜像：`sha256:47885a0370708c9b103bf08a5f9bd919c40c6bcb45851897df04e6ee7db3d5db`。Market 已通过 Portal 公网 RSC、what-if 和导出链路验证，服务端口按设计仅绑定回环地址。
 
 ## Phase 4 已验证结果
 
@@ -69,6 +70,16 @@
 - 停止 ML 后 Web readiness 返回 503 与请求 ID，Estimator 显示可重试错误；恢复 ML 后点击原错误的重试按钮成功。`docker compose down` 清除容器/网络后再次一条命令启动成功。
 - 本地浏览器截图、下载与构建日志已通过 `.gitignore`/`.dockerignore` 排除，不进入 Git 或 Docker 构建上下文。
 
+## 腾讯云公网已验证结果
+
+- 部署地址：`https://kandian.site/housing`；原 `https://kandian.site/zh-CN/` 保持正常。
+- 部署前资源：4 vCPU、根盘可用 14 GiB、内存 available 1.7 GiB；部署后根盘可用 12 GiB、内存 available 1.4 GiB、Swap 可用 1.1 GiB。
+- 四容器均 healthy，实际内存约为 ML 109 MiB、Estimator 48 MiB、Market 251 MiB、Web 124 MiB，均低于配置上限。
+- 所有宿主机端口只监听 `127.0.0.1`；公网只通过 Nginx `/housing` 路由进入 Web，业务 API 和 ML API 不直接暴露。
+- 真实 Chrome 公网验证 Estimator POST、Market Server Component、what-if、CSV/PDF 下载均为 200；正常 console 0 错误/0 警告。
+- 1280x800 与 360x800 已检查，移动端 `scrollWidth == clientWidth`；旧 BookSim 书架与核心 API 回归通过。
+- Nginx 修改前备份：`/etc/nginx/backups/booksim-before-housing-20260815013813`，路由修正前备份：`/etc/nginx/backups/booksim-before-housing-route-fix-20260815014151`。
+
 ## 下一步
 
-完成 Phase 6：检查最终 diff，提交后从 GitHub 干净克隆复跑 Compose，并按 8~12 分钟演示手册彩排。公网部署保持可选且当前未验证。
+完成 Phase 6 剩余事项：检查最终 diff，提交后从 GitHub 干净克隆复跑 Compose，并按 8~12 分钟演示手册彩排。

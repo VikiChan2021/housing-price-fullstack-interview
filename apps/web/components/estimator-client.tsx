@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { withBasePath } from "@/lib/base-path";
 import type { Estimate, PropertyFeatures } from "@/lib/types";
 
 const historyKey = "housing-estimates:v1";
@@ -74,7 +75,7 @@ export function EstimatorClient() {
     setError(null);
     setLastPayload(payload);
     try {
-      const response = await fetch("/api/estimates", {
+      const response = await fetch(withBasePath("/api/estimates"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

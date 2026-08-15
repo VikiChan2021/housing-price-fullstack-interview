@@ -103,7 +103,7 @@ docker compose down
 - 记录部署 commit、环境变量、区域和最后验证时间。
 - 免费平台可能休眠；面试现场仍保留本地 Compose 兜底。
 
-当前没有完成公网浏览器验收，只能写“本地验证通过”。
+腾讯云公网已部署至 `https://kandian.site/housing` 并完成真实 Chrome 验收。公网采用独立 Compose、回环端口和 Nginx 子路径代理；详见 `infra/tencent/README.md`。最终 GitHub 干净克隆仍未验证。
 
 ## 8. 常见排错顺序
 
