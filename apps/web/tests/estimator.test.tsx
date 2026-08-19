@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -64,5 +64,47 @@ describe("EstimatorClient", () => {
     await userEvent.click(screen.getByRole("button", { name: "Calculate estimate" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("ML API is unavailable");
     expect(screen.getByRole("button", { name: "Retry last estimate" })).toBeEnabled();
+  });
+
+  it("explains each training-range warning with its field, value, and range", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({
+        ...estimate,
+        warnings: [
+          { code: "OUTSIDE_TRAINING_RANGE", field: "bathrooms", message: "Value is outside the range observed during training.", value: 9, training_min: 1, training_max: 3 },
+          { code: "OUTSIDE_TRAINING_RANGE", field: "school_rating", message: "Value is outside the range observed during training.", value: 10, training_min: 6.5, training_max: 9.1 },
+        ],
+      }), { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+    render(<EstimatorClient />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Calculate estimate" }));
+
+    expect(await screen.findByText("Check these unusual inputs")).toBeInTheDocument();
+    expect(screen.getByText("Bathrooms is 9, above the training-data range of 1–3. This estimate may be less reliable.")).toBeInTheDocument();
+    expect(screen.getByText("School rating is 10, above the training-data range of 6.5–9.1. This estimate may be less reliable.")).toBeInTheDocument();
+    expect(screen.queryByText("Value is outside the range observed during training.")).not.toBeInTheDocument();
+  });
+
+  it("migrates saved history to stable record numbers and uses the same newest-first order", async () => {
+    const older = { ...estimate, estimate_id: "older-estimate", predicted_price: 220000, created_at: "2026-08-14T00:00:01Z" };
+    const newer = { ...estimate, estimate_id: "newer-estimate", predicted_price: 260000, created_at: "2026-08-14T00:00:02Z" };
+    localStorage.setItem("housing-estimates:v1", JSON.stringify({ version: 1, estimates: [newer, older] }));
+
+    render(<EstimatorClient />);
+
+    const chart = await screen.findByRole("list", { name: "Recent estimate values, newest first" });
+    const chartRows = within(chart).getAllByRole("listitem");
+    expect(chartRows[0]).toHaveTextContent("Estimate #2");
+    expect(chartRows[0]).toHaveTextContent("Newest");
+    expect(chartRows[1]).toHaveTextContent("Estimate #1");
+
+    const historyTable = screen.getByRole("table", { name: "Saved estimates, newest first" });
+    const historyRows = within(historyTable).getAllByRole("row").slice(1);
+    expect(historyRows[0]).toHaveTextContent("Estimate #2");
+    expect(historyRows[0]).toHaveTextContent("Newest");
+    expect(historyRows[0]).toHaveTextContent(/:\d{2}:\d{2}/);
+    expect(historyRows[1]).toHaveTextContent("Estimate #1");
+    await waitFor(() => expect(localStorage.getItem("housing-estimates:v1")).toContain('"sequence":2'));
   });
 });

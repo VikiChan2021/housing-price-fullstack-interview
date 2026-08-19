@@ -143,10 +143,10 @@ export function MarketDashboard({ initialData }: { initialData: MarketInitialDat
           <div className="field"><label htmlFor="max-price">Maximum price</label><input id="max-price" type="number" min="0" placeholder="Any" value={filters.max_price} onChange={(event) => setFilters({ ...filters, max_price: event.target.value })} /></div>
           <div className="field"><label htmlFor="bedrooms">Bedrooms</label><select id="bedrooms" value={filters.bedrooms} onChange={(event) => setFilters({ ...filters, bedrooms: event.target.value })}><option value="">Any</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
           <div className="field"><label htmlFor="min-area">Minimum living area</label><input id="min-area" type="number" min="1" placeholder="Any" value={filters.min_square_footage} onChange={(event) => setFilters({ ...filters, min_square_footage: event.target.value })} /></div>
-          <div className="actions field full"><button className="button primary" disabled={pending} type="submit">{pending ? "Refreshing…" : "Apply filters"}</button><button className="button subtle" type="button" onClick={() => { setFilters(emptyFilters); void refresh(0, sort, emptyFilters); }}>Reset</button></div>
+          <div className="actions field full"><button className="button primary" disabled={pending} type="submit">{pending ? "Searching…" : "Search properties"}</button><button className="button subtle" type="button" onClick={() => { setFilters(emptyFilters); void refresh(0, sort, emptyFilters); }}>Reset</button></div>
         </form>
         {error && <p className="form-error" role="alert">{error}</p>}
-        <div className="status-line"><span>{Object.keys(summary.applied_filters).length ? `${Object.keys(summary.applied_filters).length} active filter(s)` : "Showing all supplied records"}</span><span>Cache {summary.cache.hit ? "hit" : "miss"} · request {summary.request_id.slice(0, 8)}</span></div>
+        <div className="status-line"><span>{summary.count} {summary.count === 1 ? "property" : "properties"} found{Object.keys(summary.applied_filters).length ? ` using ${Object.keys(summary.applied_filters).length} active ${Object.keys(summary.applied_filters).length === 1 ? "filter" : "filters"}` : ""}</span></div>
       </section>
 
       <section aria-label="Market summary" className="summary-grid" aria-live="polite">

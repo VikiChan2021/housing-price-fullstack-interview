@@ -3,7 +3,10 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { withBasePath } from "@/lib/base-path";
-import type { Estimate, PropertyFeatures } from "@/lib/types";
+import type { Estimate, PropertyFeatures, RangeWarning } from "@/lib/types";
+
+type SavedEstimate = Estimate & { sequence: number };
+type StoredEstimate = Estimate & { sequence?: number };
 
 const historyKey = "housing-estimates:v1";
 const defaults: PropertyFeatures = {
@@ -34,6 +37,38 @@ const fields: Array<{
 ];
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const featureNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+const createdAt = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+});
+
+function normalizeHistory(estimates: StoredEstimate[]): SavedEstimate[] {
+  if (estimates.every((item) => Number.isInteger(item.sequence) && Number(item.sequence) > 0)) {
+    return estimates as SavedEstimate[];
+  }
+  const sequences = new Map(estimates.slice().reverse().map((item, index) => [item.estimate_id, index + 1]));
+  return estimates.map((item) => ({ ...item, sequence: sequences.get(item.estimate_id)! }));
+}
+
+function formatCreatedAt(value: string): string {
+  return createdAt.format(new Date(value));
+}
+
+function formatProperty(item: SavedEstimate): string {
+  return `${featureNumber.format(item.property.square_footage)} sq ft · ${item.property.bedrooms} bd · ${featureNumber.format(item.property.bathrooms)} ba · ${item.property.year_built}`;
+}
+
+function formatWarning(warning: RangeWarning): string {
+  const field = fields.find((item) => item.key === warning.field);
+  const label = field?.label ?? warning.field.replaceAll("_", " ");
+  const direction = warning.value < warning.training_min ? "below" : "above";
+  return `${label} is ${featureNumber.format(warning.value)}, ${direction} the training-data range of ${featureNumber.format(warning.training_min)}–${featureNumber.format(warning.training_max)}. This estimate may be less reliable.`;
+}
 
 function parseError(payload: unknown): string {
   if (payload && typeof payload === "object" && "error" in payload) {
@@ -44,7 +79,7 @@ function parseError(payload: unknown): string {
 }
 
 export function EstimatorClient() {
-  const [history, setHistory] = useState<Estimate[]>([]);
+  const [history, setHistory] = useState<SavedEstimate[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,17 +89,20 @@ export function EstimatorClient() {
     try {
       const stored = localStorage.getItem(historyKey);
       if (!stored) return;
-      const envelope = JSON.parse(stored) as { version?: number; estimates?: Estimate[] };
+      const envelope = JSON.parse(stored) as { version?: number; estimates?: StoredEstimate[] };
       if (envelope.version === 1 && Array.isArray(envelope.estimates)) {
-        const restored = envelope.estimates.slice(0, 20);
-        queueMicrotask(() => setHistory(restored));
+        const restored = normalizeHistory(envelope.estimates.slice(0, 20));
+        queueMicrotask(() => {
+          setHistory(restored);
+          localStorage.setItem(historyKey, JSON.stringify({ version: 1, estimates: restored }));
+        });
       }
     } catch {
       localStorage.removeItem(historyKey);
     }
   }, []);
 
-  function save(next: Estimate[]) {
+  function save(next: SavedEstimate[]) {
     const limited = next.slice(0, 20);
     setHistory(limited);
     localStorage.setItem(historyKey, JSON.stringify({ version: 1, estimates: limited }));
@@ -83,7 +121,11 @@ export function EstimatorClient() {
       const body = (await response.json()) as unknown;
       if (!response.ok) throw new Error(parseError(body));
       const estimate = body as Estimate;
-      save([estimate, ...history.filter((item) => item.estimate_id !== estimate.estimate_id)]);
+      const savedEstimate: SavedEstimate = {
+        ...estimate,
+        sequence: Math.max(0, ...history.map((item) => item.sequence)) + 1,
+      };
+      save([savedEstimate, ...history.filter((item) => item.estimate_id !== estimate.estimate_id)]);
       setSelected((current) => [estimate.estimate_id, ...current].slice(0, 3));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The estimate could not be completed.");
@@ -114,7 +156,7 @@ export function EstimatorClient() {
   }
 
   const comparison = history.filter((item) => selected.includes(item.estimate_id));
-  const chart = useMemo(() => history.slice(0, 6).reverse(), [history]);
+  const chart = useMemo(() => history.slice(0, 6), [history]);
   const chartMax = Math.max(...chart.map((item) => item.predicted_price), 1);
   const latest = history[0];
 
@@ -175,7 +217,7 @@ export function EstimatorClient() {
             <>
               <div className="price-hero">
                 <div><span>Predicted property value</span><strong>{money.format(latest.predicted_price)}</strong></div>
-                <span>{new Date(latest.created_at).toLocaleString()}</span>
+                <span>Estimate #{latest.sequence} · {formatCreatedAt(latest.created_at)}</span>
               </div>
               <div className="table-wrap" style={{ marginTop: "1rem" }}>
                 <table>
@@ -184,7 +226,7 @@ export function EstimatorClient() {
                   <tbody><tr><td>{latest.property.square_footage}</td><td>{latest.property.bedrooms}</td><td>{latest.property.bathrooms}</td><td>{latest.property.year_built}</td><td>{latest.property.lot_size}</td><td>{latest.property.distance_to_city_center}</td><td>{latest.property.school_rating}</td><td>{money.format(latest.predicted_price)}</td></tr></tbody>
                 </table>
               </div>
-              {latest.warnings.length > 0 && <ul className="warning-list">{latest.warnings.map((warning) => <li key={warning.field}>{warning.message}</li>)}</ul>}
+              {latest.warnings.length > 0 && <div className="reliability-notice" role="status"><strong>Check these unusual inputs</strong><p>They are outside the values represented in the training data.</p><ul>{latest.warnings.map((warning) => <li key={warning.field}>{formatWarning(warning)}</li>)}</ul></div>}
             </>
           ) : <div className="empty-state">Submit the form to create your first estimate.</div>}
         </section>
@@ -196,13 +238,14 @@ export function EstimatorClient() {
           </div>
           {history.length === 0 ? <div className="empty-state">No saved estimates yet.</div> : (
             <>
-              <div className="bar-chart" role="img" aria-label="Recent predicted property values bar chart">
-                {chart.map((item) => <div className="bar-row" key={item.estimate_id}><span>{item.property.square_footage} sq ft</span><div className="bar-track"><div className="bar-fill" style={{ width: `${item.predicted_price / chartMax * 100}%` }} /></div><strong>{money.format(item.predicted_price)}</strong></div>)}
-              </div>
+              <ol className="history-chart" aria-label="Recent estimate values, newest first">
+                {chart.map((item, index) => <li className={`history-chart-row${index === 0 ? " is-latest" : ""}`} key={item.estimate_id}><div className="history-chart-label"><span className="history-sequence">Estimate #{item.sequence}</span>{index === 0 && <span className="newest-badge">Newest</span>}<span>{featureNumber.format(item.property.square_footage)} sq ft · {item.property.bedrooms} bd</span></div><div className="bar-track"><div className="bar-fill" style={{ width: `${item.predicted_price / chartMax * 100}%` }} /></div><strong>{money.format(item.predicted_price)}</strong></li>)}
+              </ol>
               <div className="table-wrap" style={{ marginTop: "1.25rem" }}>
                 <table>
-                  <thead><tr><th>Compare</th><th>Created</th><th>Property</th><th>Estimate</th></tr></thead>
-                  <tbody>{history.map((item) => <tr key={item.estimate_id}><td><label className="checkbox-label"><input type="checkbox" checked={selected.includes(item.estimate_id)} disabled={!selected.includes(item.estimate_id) && selected.length >= 3} onChange={() => toggleCompare(item.estimate_id)} /><span className="sr-only">Compare estimate {item.estimate_id}</span></label></td><td>{new Date(item.created_at).toLocaleDateString()}</td><td>{item.property.square_footage} sq ft · {item.property.bedrooms} bd</td><td>{money.format(item.predicted_price)}</td></tr>)}</tbody>
+                  <caption className="sr-only">Saved estimates, newest first</caption>
+                  <thead><tr><th>Compare</th><th>Record</th><th>Created</th><th>Property</th><th>Estimate</th></tr></thead>
+                  <tbody>{history.map((item, index) => <tr className={index === 0 ? "history-latest-row" : undefined} key={item.estimate_id}><td><label className="checkbox-label"><input type="checkbox" checked={selected.includes(item.estimate_id)} disabled={!selected.includes(item.estimate_id) && selected.length >= 3} onChange={() => toggleCompare(item.estimate_id)} /><span className="sr-only">Compare estimate {item.sequence}</span></label></td><td><span className="history-sequence">Estimate #{item.sequence}</span>{index === 0 && <span className="newest-badge">Newest</span>}</td><td><time dateTime={item.created_at}>{formatCreatedAt(item.created_at)}</time></td><td>{formatProperty(item)}</td><td>{money.format(item.predicted_price)}</td></tr>)}</tbody>
                 </table>
               </div>
             </>
@@ -210,7 +253,7 @@ export function EstimatorClient() {
           {comparison.length >= 2 && (
             <div className="compare-box">
               <h3>Side-by-side comparison</h3>
-              <div className="table-wrap"><table><thead><tr><th>Property</th>{comparison.map((item) => <th key={item.estimate_id}>{item.property.square_footage} sq ft</th>)}</tr></thead><tbody>{fields.map((field) => <tr key={field.key}><th>{field.label}</th>{comparison.map((item) => <td key={item.estimate_id}>{item.property[field.key]}</td>)}</tr>)}<tr><th>Predicted price</th>{comparison.map((item) => <td key={item.estimate_id}><strong>{money.format(item.predicted_price)}</strong></td>)}</tr></tbody></table></div>
+              <div className="table-wrap"><table><thead><tr><th>Property</th>{comparison.map((item) => <th key={item.estimate_id}>Estimate #{item.sequence}</th>)}</tr></thead><tbody>{fields.map((field) => <tr key={field.key}><th>{field.label}</th>{comparison.map((item) => <td key={item.estimate_id}>{item.property[field.key]}</td>)}</tr>)}<tr><th>Predicted price</th>{comparison.map((item) => <td key={item.estimate_id}><strong>{money.format(item.predicted_price)}</strong></td>)}</tr></tbody></table></div>
             </div>
           )}
         </section>

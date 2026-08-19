@@ -41,7 +41,7 @@ standalone 镜像从仓库根目录构建：
 docker build -f apps/web/Dockerfile -t housing-price-web:local .
 ```
 
-最近一次本地验收：严格 TypeScript 和 9 项 Vitest 测试通过；真实浏览器和生产构建的最新结论以仓库根 README 的开发状态为准。市场页测试覆盖筛选/排序、路由往返状态保留、what-if，以及带浏览器时区的 CSV/PDF 导出链接。
+最近一次本地验收：严格 TypeScript 和 11 项 Vitest 测试通过；真实浏览器和生产构建的最新结论以仓库根 README 的开发状态为准。市场页测试覆盖搜索/排序、路由往返状态保留、what-if，以及带浏览器时区的 CSV/PDF 导出链接；估价页测试覆盖字段化范围提示、稳定历史序号和图表/表格同序展示。
 
 ## 可访问性与响应式
 

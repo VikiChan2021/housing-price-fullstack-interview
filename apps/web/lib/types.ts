@@ -12,6 +12,9 @@ export type RangeWarning = {
   code: string;
   field: string;
   message: string;
+  value: number;
+  training_min: number;
+  training_max: number;
 };
 
 export type Estimate = {

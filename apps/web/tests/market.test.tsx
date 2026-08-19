@@ -27,6 +27,8 @@ describe("MarketDashboard", () => {
     expect(screen.getByRole("columnheader", { name: "Lot" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Distance" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "$180,000" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Search properties" })).toBeInTheDocument();
+    expect(screen.queryByText(/Cache (hit|miss)/)).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Export PDF" }).getAttribute("href"))
       .toContain("time_zone=");
   });
@@ -42,7 +44,7 @@ describe("MarketDashboard", () => {
     render(<MarketDashboard initialData={initial} />);
 
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Bedrooms" }), "3");
-    await userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+    await userEvent.click(screen.getByRole("button", { name: "Search properties" }));
 
     expect(await screen.findByText("22")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -69,7 +71,7 @@ describe("MarketDashboard", () => {
 
     render(<RouteHarness />);
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Bedrooms" }), "3");
-    await userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+    await userEvent.click(screen.getByRole("button", { name: "Search properties" }));
     expect(await screen.findByText("22")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Switch route" }));
