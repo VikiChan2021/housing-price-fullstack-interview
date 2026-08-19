@@ -37,6 +37,7 @@
 ## 运行、部署与演示
 
 - [本地运行与部署设计](operations/LOCAL_RUN_AND_DEPLOYMENT.md)
+- [本地调试与一键启动指南](operations/LOCAL_DEBUGGING_GUIDE.md)
 - [面试演示手册](operations/INTERVIEW_DEMO_RUNBOOK.md)
 
 ## 架构决策

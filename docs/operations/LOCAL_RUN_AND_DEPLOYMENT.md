@@ -2,6 +2,8 @@
 
 状态：四服务 Dockerfile 与根 Compose 已实现，并于 2026-08-15 完成本地构建、健康等待、浏览器、故障恢复、关闭和重启验收。
 
+面试现场的非 Docker/Docker 一键启动、分服务调试、日志和命令清单见[本地调试与一键启动指南](LOCAL_DEBUGGING_GUIDE.md)。
+
 ## 1. 本地基线
 
 面试交付的可靠基线是 Docker Compose，而不是要求面试官分别安装 Python、Node 和 Java。

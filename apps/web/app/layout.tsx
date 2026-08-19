@@ -12,8 +12,10 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  // Extensions can add attributes to <html> before React hydrates the document.
+  // Keep the suppression at this root boundary so real mismatches below it stay visible.
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body>
         <a className="skip-link" href="#main-content">Skip to content</a>
         <header className="site-header">

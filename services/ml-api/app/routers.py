@@ -4,9 +4,13 @@ from fastapi import APIRouter, Body, Depends, Request
 from fastapi.responses import JSONResponse
 
 from app.http import error_response, request_id
+from app.openapi import (
+    MODEL_NOT_READY_RESPONSES,
+    PREDICT_REQUEST_EXAMPLES,
+    PREDICT_RESPONSES,
+)
 from app.runtime import ModelArtifactError, ModelRuntime
 from app.schemas import (
-    ErrorEnvelope,
     HealthResponse,
     ModelInfo,
     PredictionItem,
@@ -15,8 +19,8 @@ from app.schemas import (
     ReadinessResponse,
 )
 
-prediction_router = APIRouter(prefix="/api/v1", tags=["predictions"])
-model_router = APIRouter(prefix="/api/v1", tags=["model"])
+prediction_router = APIRouter(tags=["predictions"])
+model_router = APIRouter(tags=["model"])
 infrastructure_router = APIRouter(tags=["infrastructure"])
 
 
@@ -25,84 +29,20 @@ def get_model_runtime(request: Request) -> ModelRuntime | None:
 
 
 ModelRuntimeDependency = Annotated[ModelRuntime | None, Depends(get_model_runtime)]
+PredictionPayload = Annotated[
+    PropertyFeatures | list[PropertyFeatures],
+    Body(openapi_examples=PREDICT_REQUEST_EXAMPLES),
+]
 
 
 @prediction_router.post(
-    "/predict",
+    "/api/v1/predict",
     response_model=PredictionResponse,
-    responses={
-        200: {
-            "description": "Ordered predictions",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "predictions": [{"index": 0, "predicted_price": 248849.64, "warnings": []}],
-                        "count": 1,
-                        "model_version": "ridge-v1-0e36c622-a05bac12",
-                        "request_id": "5c59f6b4-4a42-49c5-a7aa-b1dcb1431212",
-                    }
-                }
-            },
-        },
-        413: {"model": ErrorEnvelope},
-        422: {
-            "model": ErrorEnvelope,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "error": {
-                            "code": "VALIDATION_ERROR",
-                            "message": "One or more fields are invalid.",
-                            "details": [
-                                {
-                                    "field": "school_rating",
-                                    "message": "Input should be less than or equal to 10",
-                                }
-                            ],
-                            "request_id": "5c59f6b4-4a42-49c5-a7aa-b1dcb1431212",
-                        }
-                    }
-                }
-            },
-        },
-        503: {"model": ErrorEnvelope},
-    },
+    responses=PREDICT_RESPONSES,
 )
 async def predict(
     request: Request,
-    payload: Annotated[
-        PropertyFeatures | list[PropertyFeatures],
-        Body(
-            openapi_examples={
-                "single": {
-                    "summary": "Single property",
-                    "value": {
-                        "square_footage": 1550,
-                        "bedrooms": 3,
-                        "bathrooms": 2,
-                        "year_built": 1997,
-                        "lot_size": 6800,
-                        "distance_to_city_center": 4.1,
-                        "school_rating": 7.6,
-                    },
-                },
-                "batch": {
-                    "summary": "Batch of properties",
-                    "value": [
-                        {
-                            "square_footage": 1550,
-                            "bedrooms": 3,
-                            "bathrooms": 2,
-                            "year_built": 1997,
-                            "lot_size": 6800,
-                            "distance_to_city_center": 4.1,
-                            "school_rating": 7.6,
-                        }
-                    ],
-                },
-            }
-        ),
-    ],
+    payload: PredictionPayload,
     runtime: ModelRuntimeDependency,
 ) -> PredictionResponse | JSONResponse:
     items = payload if isinstance(payload, list) else [payload]
@@ -131,9 +71,9 @@ async def predict(
 
 
 @model_router.get(
-    "/model-info",
+    "/api/v1/model-info",
     response_model=ModelInfo,
-    responses={503: {"model": ErrorEnvelope}},
+    responses=MODEL_NOT_READY_RESPONSES,
 )
 async def model_info(request: Request, runtime: ModelRuntimeDependency) -> ModelInfo | JSONResponse:
     if runtime is None:
@@ -144,7 +84,7 @@ async def model_info(request: Request, runtime: ModelRuntimeDependency) -> Model
 @infrastructure_router.get(
     "/health",
     response_model=HealthResponse,
-    responses={503: {"model": ErrorEnvelope}},
+    responses=MODEL_NOT_READY_RESPONSES,
 )
 async def health(
     request: Request, runtime: ModelRuntimeDependency
@@ -157,7 +97,7 @@ async def health(
 @infrastructure_router.get(
     "/ready",
     response_model=ReadinessResponse,
-    responses={503: {"model": ErrorEnvelope}},
+    responses=MODEL_NOT_READY_RESPONSES,
 )
 async def ready(
     request: Request, runtime: ModelRuntimeDependency

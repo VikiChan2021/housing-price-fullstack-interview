@@ -12,8 +12,12 @@ from app.ml_client import (
     UpstreamTimeout,
     UpstreamUnavailable,
 )
+from app.openapi import (
+    ESTIMATE_BATCH_RESPONSES,
+    ESTIMATE_RESPONSES,
+    UPSTREAM_NOT_READY_RESPONSES,
+)
 from app.schemas import (
-    ErrorEnvelope,
     EstimateBatchResponse,
     EstimateResponse,
     HealthResponse,
@@ -23,7 +27,7 @@ from app.schemas import (
     ReadinessResponse,
 )
 
-estimate_router = APIRouter(prefix="/api/v1", tags=["estimates"])
+estimate_router = APIRouter(tags=["estimates"])
 infrastructure_router = APIRouter(tags=["infrastructure"])
 
 
@@ -52,14 +56,9 @@ async def _call_ml(
 
 
 @estimate_router.post(
-    "/estimates",
+    "/api/v1/estimates",
     response_model=EstimateResponse,
-    responses={
-        422: {"model": ErrorEnvelope},
-        502: {"model": ErrorEnvelope},
-        503: {"model": ErrorEnvelope},
-        504: {"model": ErrorEnvelope},
-    },
+    responses=ESTIMATE_RESPONSES,
 )
 async def create_estimate(
     request: Request,
@@ -83,15 +82,9 @@ async def create_estimate(
 
 
 @estimate_router.post(
-    "/estimates/batch",
+    "/api/v1/estimates/batch",
     response_model=EstimateBatchResponse,
-    responses={
-        413: {"model": ErrorEnvelope},
-        422: {"model": ErrorEnvelope},
-        502: {"model": ErrorEnvelope},
-        503: {"model": ErrorEnvelope},
-        504: {"model": ErrorEnvelope},
-    },
+    responses=ESTIMATE_BATCH_RESPONSES,
 )
 async def create_estimate_batch(
     request: Request,
@@ -138,7 +131,7 @@ async def health(ml_client: MlClientDependency) -> HealthResponse:
 @infrastructure_router.get(
     "/ready",
     response_model=ReadinessResponse,
-    responses={503: {"model": ErrorEnvelope}},
+    responses=UPSTREAM_NOT_READY_RESPONSES,
 )
 async def ready(
     request: Request, ml_client: MlClientDependency
