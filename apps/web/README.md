@@ -4,11 +4,12 @@ Next.js App Router Portal，提供 Property Estimator 与 Market Analysis 两个
 
 ## 组件边界
 
-- Server Component：`app/market/page.tsx` 在服务端并行读取 Market summary、properties 和 segments，避免把内网服务地址暴露给浏览器。
+- Server Component：`app/market/page.tsx` 在服务端并行读取 Market summary 和 properties，避免把内网服务地址暴露给浏览器。
 - Client Component：Estimator 表单、本地历史/比较，以及 Market 筛选、排序、分页、what-if 交互。
+- 共享布局中的 `MarketStateProvider` 缓存 Market 页面状态；在两个应用间切换时保留筛选条件、结果、排序和 what-if 输入，刷新页面时仍以服务端最新数据为准。
 - 同源 BFF：`app/api/estimates` 与 `app/api/market/[...path]` 代理业务后端，传播请求 ID、下载响应头和稳定错误。
 - `app/api/ready` 同时检查 Estimator 与 Market readiness；任一依赖未就绪时返回 503。
-- 历史数据使用版本化 localStorage，仅保存在当前浏览器。
+- Estimator 历史使用版本化 localStorage；Market 路由缓存仅保存在当前标签页内存中。
 
 浏览器不会直接访问 ML API，也不持有内部服务地址或密钥。
 
@@ -40,7 +41,7 @@ standalone 镜像从仓库根目录构建：
 docker build -f apps/web/Dockerfile -t housing-price-web:local .
 ```
 
-最近一次本地验收：ESLint、严格 TypeScript、生产构建和 7 项 Vitest 测试通过；真实 Chromium 在 1280x800 与 360x800 下完成估价、刷新历史、比较、市场筛选/排序、what-if、CSV/PDF 下载、错误边界和重试恢复。故障注入产生的预期 503/504 不计为意外网络错误。
+最近一次本地验收：严格 TypeScript 和 9 项 Vitest 测试通过；真实浏览器和生产构建的最新结论以仓库根 README 的开发状态为准。市场页测试覆盖筛选/排序、路由往返状态保留、what-if，以及带浏览器时区的 CSV/PDF 导出链接。
 
 ## 可访问性与响应式
 

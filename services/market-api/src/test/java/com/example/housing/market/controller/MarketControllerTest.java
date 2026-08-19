@@ -17,11 +17,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -89,5 +92,19 @@ class MarketControllerTest {
         mockMvc.perform(get("/ready"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.error.code").value("UPSTREAM_UNAVAILABLE"));
+    }
+
+    @Test
+    void exportUsesRequestedBrowserTimeZone() throws Exception {
+        when(marketService.filtered(any())).thenReturn(List.of());
+        when(exportService.pdf(any(), any(), any(), any())).thenReturn(new byte[]{1, 2, 3});
+
+        mockMvc.perform(get("/api/v1/market/export")
+                        .queryParam("format", "pdf")
+                        .queryParam("time_zone", "Asia/Hong_Kong"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"));
+
+        verify(exportService).pdf(any(), any(), any(), eq(ZoneId.of("Asia/Hong_Kong")));
     }
 }

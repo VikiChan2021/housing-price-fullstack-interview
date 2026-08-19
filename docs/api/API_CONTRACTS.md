@@ -446,11 +446,11 @@ Base URL：`http://market-api:8080`
 
 ### 5.6 `GET /api/v1/market/export`
 
-参数：通用筛选参数 + `format=csv|pdf`。响应使用正确的 `Content-Type` 与 `Content-Disposition`。CSV 防止公式注入；PDF 包含筛选条件和生成时间。
+参数：通用筛选参数 + `format=csv|pdf` + 可选的 IANA 时区 `time_zone`（默认 `UTC`，例如 `Asia/Hong_Kong`）。响应使用正确的 `Content-Type` 与 `Content-Disposition`。CSV 防止公式注入；PDF 包含筛选条件和生成时间。
 
 - CSV：`text/csv; charset=utf-8`，包含当前全部筛选行（不受列表分页影响）、固定列头和 UTF-8 BOM。
-- PDF：`application/pdf`，包含标题、UTC 生成时间、筛选条件、摘要统计和主要数据表；空结果仍生成带“无匹配数据”说明的有效 PDF。
-- `Content-Disposition` 使用安全文件名 `market-export-YYYYMMDD.<csv|pdf>`，不得反射未经清理的查询参数。
+- PDF：`application/pdf`，包含标题、按 `time_zone` 转换后的生成时间、可读的筛选条件、摘要统计和完整格式化数据表；空结果仍生成带“无匹配数据”说明的有效 PDF。
+- `Content-Disposition` 使用安全文件名 `market-export-YYYYMMDD.<csv|pdf>`，日期按 `time_zone` 计算，不得反射未经清理的查询参数。
 
 ### 5.7 `GET /health`
 

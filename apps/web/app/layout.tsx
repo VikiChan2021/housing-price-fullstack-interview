@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { SiteNav } from "@/components/site-nav";
+import { MarketStateProvider } from "@/components/market-state-provider";
 
 import "./globals.css";
 
@@ -24,7 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             <SiteNav />
           </div>
         </header>
-        {children}
+        <MarketStateProvider>{children}</MarketStateProvider>
         <footer className="site-footer">
           Demo estimates are model associations, not appraisals or financial advice.
         </footer>

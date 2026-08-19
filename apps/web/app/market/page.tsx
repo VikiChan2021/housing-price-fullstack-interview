@@ -15,7 +15,7 @@ export default async function MarketPage() {
         </div>
         <p>
           This first view was loaded on the server. Refine the supplied dataset, inspect comparable
-          segments, and test model-backed scenarios without treating association as causation.
+          properties, and test model-backed scenarios without treating association as causation.
         </p>
       </div>
       <MarketDashboard initialData={initialData} />

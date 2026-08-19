@@ -1,12 +1,12 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
+import { type MarketFilters, useMarketStateCache } from "@/components/market-state-provider";
 import { withBasePath } from "@/lib/base-path";
 import type { MarketInitialData, PropertyFeatures, WhatIfResponse } from "@/lib/types";
 
-type Filters = { min_price: string; max_price: string; bedrooms: string; min_square_footage: string };
-const emptyFilters: Filters = { min_price: "", max_price: "", bedrooms: "", min_square_footage: "" };
+const emptyFilters: MarketFilters = { min_price: "", max_price: "", bedrooms: "", min_square_footage: "" };
 const propertyDefaults: PropertyFeatures = { square_footage: 1550, bedrooms: 3, bathrooms: 2, year_built: 1997, lot_size: 6800, distance_to_city_center: 4.1, school_rating: 7.6 };
 const scenarioDefaults: PropertyFeatures = { ...propertyDefaults, square_footage: 1750 };
 const featureFields: Array<{ key: keyof PropertyFeatures; label: string; step: number }> = [
@@ -20,8 +20,11 @@ const featureFields: Array<{ key: keyof PropertyFeatures; label: string; step: n
 ];
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+const subscribeToTimeZone = () => () => undefined;
+const readBrowserTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+const readServerTimeZone = () => "UTC";
 
-function queryFor(filters: Filters): URLSearchParams {
+function queryFor(filters: MarketFilters): URLSearchParams {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) if (value !== "") query.set(key, value);
   return query;
@@ -39,23 +42,30 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export function MarketDashboard({ initialData }: { initialData: MarketInitialData }) {
-  const [filters, setFilters] = useState<Filters>(emptyFilters);
-  const [summary, setSummary] = useState(initialData.summary);
-  const [properties, setProperties] = useState(initialData.properties);
-  const [segments, setSegments] = useState(initialData.segments);
-  const [groupBy, setGroupBy] = useState<"bedrooms" | "year_band" | "price_band">("bedrooms");
-  const [sort, setSort] = useState("id,asc");
+  const { cachedState, setCachedState } = useMarketStateCache();
+  const [filters, setFilters] = useState<MarketFilters>(cachedState?.filters ?? emptyFilters);
+  const [summary, setSummary] = useState(cachedState?.summary ?? initialData.summary);
+  const [properties, setProperties] = useState(cachedState?.properties ?? initialData.properties);
+  const [sort, setSort] = useState(cachedState?.sort ?? "id,asc");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [whatIf, setWhatIf] = useState<WhatIfResponse | null>(null);
+  const [whatIf, setWhatIf] = useState<WhatIfResponse | null>(cachedState?.whatIf ?? null);
   const [whatIfPending, setWhatIfPending] = useState(false);
-  const [baseline, setBaseline] = useState(propertyDefaults);
-  const [scenario, setScenario] = useState(scenarioDefaults);
+  const [baseline, setBaseline] = useState(cachedState?.baseline ?? propertyDefaults);
+  const [scenario, setScenario] = useState(cachedState?.scenario ?? scenarioDefaults);
+  const timeZone = useSyncExternalStore(
+    subscribeToTimeZone,
+    readBrowserTimeZone,
+    readServerTimeZone,
+  );
+
+  useEffect(() => {
+    setCachedState({ filters, summary, properties, sort, baseline, scenario, whatIf });
+  }, [baseline, filters, properties, scenario, setCachedState, sort, summary, whatIf]);
 
   async function refresh(
     nextPage = 0,
     nextSort = sort,
-    nextGroup = groupBy,
     activeFilters = filters,
   ) {
     setPending(true);
@@ -66,19 +76,14 @@ export function MarketDashboard({ initialData }: { initialData: MarketInitialDat
     propertiesQuery.set("page", String(nextPage));
     propertiesQuery.set("size", "10");
     propertiesQuery.set("sort", nextSort);
-    const segmentQuery = new URLSearchParams(query);
-    segmentQuery.set("group_by", nextGroup);
     try {
-      const [nextSummary, nextProperties, nextSegments] = await Promise.all([
+      const [nextSummary, nextProperties] = await Promise.all([
         api<MarketInitialData["summary"]>(`/api/market/summary${summaryQuery ? `?${summaryQuery}` : ""}`),
         api<MarketInitialData["properties"]>(`/api/market/properties?${propertiesQuery}`),
-        api<MarketInitialData["segments"]>(`/api/market/segments?${segmentQuery}`),
       ]);
       setSummary(nextSummary);
       setProperties(nextProperties);
-      setSegments(nextSegments);
       setSort(nextSort);
-      setGroupBy(nextGroup);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Market data could not be refreshed.");
     } finally {
@@ -114,8 +119,11 @@ export function MarketDashboard({ initialData }: { initialData: MarketInitialDat
     }
   }
 
-  const exportQuery = useMemo(() => queryFor(filters).toString(), [filters]);
-  const segmentMax = Math.max(...segments.segments.map((item) => item.average_price), 1);
+  const exportQuery = useMemo(() => {
+    const query = queryFor(filters);
+    query.set("time_zone", timeZone);
+    return query.toString();
+  }, [filters, timeZone]);
   const metrics = [
     ["Matching homes", String(summary.count)],
     ["Average price", summary.average_price == null ? "—" : money.format(summary.average_price)],
@@ -135,7 +143,7 @@ export function MarketDashboard({ initialData }: { initialData: MarketInitialDat
           <div className="field"><label htmlFor="max-price">Maximum price</label><input id="max-price" type="number" min="0" placeholder="Any" value={filters.max_price} onChange={(event) => setFilters({ ...filters, max_price: event.target.value })} /></div>
           <div className="field"><label htmlFor="bedrooms">Bedrooms</label><select id="bedrooms" value={filters.bedrooms} onChange={(event) => setFilters({ ...filters, bedrooms: event.target.value })}><option value="">Any</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
           <div className="field"><label htmlFor="min-area">Minimum living area</label><input id="min-area" type="number" min="1" placeholder="Any" value={filters.min_square_footage} onChange={(event) => setFilters({ ...filters, min_square_footage: event.target.value })} /></div>
-          <div className="actions field full"><button className="button primary" disabled={pending} type="submit">{pending ? "Refreshing…" : "Apply filters"}</button><button className="button subtle" type="button" onClick={() => { setFilters(emptyFilters); void refresh(0, sort, groupBy, emptyFilters); }}>Reset</button></div>
+          <div className="actions field full"><button className="button primary" disabled={pending} type="submit">{pending ? "Refreshing…" : "Apply filters"}</button><button className="button subtle" type="button" onClick={() => { setFilters(emptyFilters); void refresh(0, sort, emptyFilters); }}>Reset</button></div>
         </form>
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="status-line"><span>{Object.keys(summary.applied_filters).length ? `${Object.keys(summary.applied_filters).length} active filter(s)` : "Showing all supplied records"}</span><span>Cache {summary.cache.hit ? "hit" : "miss"} · request {summary.request_id.slice(0, 8)}</span></div>
@@ -145,19 +153,11 @@ export function MarketDashboard({ initialData }: { initialData: MarketInitialDat
         {metrics.map(([label, value]) => <div className="metric-card" key={label}><span>{label}</span><strong>{value}</strong></div>)}
       </section>
 
-      <div className="dashboard-grid">
-        <section className="panel" aria-labelledby="segments-title">
-          <div className="panel-heading"><div><p className="eyebrow">Visual comparison</p><h2 id="segments-title">Market segments</h2></div></div>
-          <div className="field"><label htmlFor="group-by">Group properties by</label><select id="group-by" value={groupBy} onChange={(event) => void refresh(0, sort, event.target.value as typeof groupBy)}><option value="bedrooms">Bedrooms</option><option value="year_band">Year built</option><option value="price_band">Price band</option></select></div>
-          {segments.segments.length === 0 ? <div className="empty-state">No segments match these filters.</div> : <div className="bar-chart" role="img" aria-label={`Average price grouped by ${segments.group_by}`}>{segments.segments.map((item) => <div className="bar-row" key={item.key}><span>{item.label}</span><div className="bar-track"><div className="bar-fill" style={{ width: `${item.average_price / segmentMax * 100}%` }} /></div><strong>{money.format(item.average_price)}</strong></div>)}</div>}
-        </section>
-
-        <section className="panel" aria-labelledby="properties-title">
-          <div className="panel-heading"><div><p className="eyebrow">Source rows</p><h2 id="properties-title">Matching properties</h2></div><span className="micro">{properties.total_items} total</span></div>
-          {properties.items.length === 0 ? <div className="empty-state">No properties match. Broaden or reset the filters.</div> : <div className="table-wrap"><table><thead><tr><th>ID</th><th>Area</th><th>Beds</th><th>Baths</th><th>Year</th><th>School</th><th><button className="sort-button" type="button" onClick={() => void refresh(0, sort === "price,desc" ? "price,asc" : "price,desc")}>Price {sort === "price,desc" ? "↓" : sort === "price,asc" ? "↑" : "↕"}</button></th></tr></thead><tbody>{properties.items.map((item) => <tr key={item.id}><td>{item.id}</td><td>{number.format(item.square_footage)}</td><td>{item.bedrooms}</td><td>{item.bathrooms}</td><td>{item.year_built}</td><td>{item.school_rating}</td><td>{money.format(item.price)}</td></tr>)}</tbody></table></div>}
-          <div className="pagination"><button className="button subtle" disabled={pending || properties.page === 0} type="button" onClick={() => void refresh(properties.page - 1)}>Previous</button><span className="micro">Page {properties.total_pages === 0 ? 0 : properties.page + 1} of {properties.total_pages}</span><button className="button subtle" disabled={pending || properties.page + 1 >= properties.total_pages} type="button" onClick={() => void refresh(properties.page + 1)}>Next</button></div>
-        </section>
-      </div>
+      <section className="panel market-table-panel" aria-labelledby="properties-title">
+        <div className="panel-heading"><div><p className="eyebrow">Source rows</p><h2 id="properties-title">Matching properties</h2></div><span className="micro">{properties.total_items} total</span></div>
+        {properties.items.length === 0 ? <div className="empty-state">No properties match. Broaden or reset the filters.</div> : <div className="table-wrap"><table><thead><tr><th>ID</th><th>Area</th><th>Beds</th><th>Baths</th><th>Year</th><th>Lot</th><th>School</th><th>Distance</th><th><button className="sort-button" type="button" onClick={() => void refresh(0, sort === "price,desc" ? "price,asc" : "price,desc")}>Price {sort === "price,desc" ? "↓" : sort === "price,asc" ? "↑" : "↕"}</button></th></tr></thead><tbody>{properties.items.map((item) => <tr key={item.id}><td>{item.id}</td><td>{number.format(item.square_footage)}</td><td>{item.bedrooms}</td><td>{item.bathrooms}</td><td>{item.year_built}</td><td>{number.format(item.lot_size)}</td><td>{item.school_rating}</td><td>{number.format(item.distance_to_city_center)} mi</td><td>{money.format(item.price)}</td></tr>)}</tbody></table></div>}
+        <div className="pagination"><button className="button subtle" disabled={pending || properties.page === 0} type="button" onClick={() => void refresh(properties.page - 1)}>Previous</button><span className="micro">Page {properties.total_pages === 0 ? 0 : properties.page + 1} of {properties.total_pages}</span><button className="button subtle" disabled={pending || properties.page + 1 >= properties.total_pages} type="button" onClick={() => void refresh(properties.page + 1)}>Next</button></div>
+      </section>
 
       <section className="panel" aria-labelledby="what-if-title">
         <div className="panel-heading"><div><p className="eyebrow">Model-backed scenario</p><h2 id="what-if-title">What changes when the property changes?</h2></div><span className="micro">Association, not causation</span></div>

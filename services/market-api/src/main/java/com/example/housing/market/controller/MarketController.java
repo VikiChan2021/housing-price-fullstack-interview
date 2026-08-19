@@ -35,9 +35,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.List;
 
 @RestController
@@ -103,10 +104,13 @@ public class MarketController {
 
     @GetMapping("/api/v1/market/export")
     public ResponseEntity<byte[]> export(@ModelAttribute FilterParameters parameters,
-                                         @RequestParam String format) {
+                                         @RequestParam String format,
+                                         @RequestParam(name = "time_zone", defaultValue = "UTC")
+                                         String timeZone) {
         MarketFilters filters = parameters.filters().validated();
         List<MarketProperty> rows = marketService.filtered(filters);
         Instant generatedAt = clock.instant();
+        ZoneId zoneId = parseTimeZone(timeZone);
         String normalized = format.toLowerCase();
         byte[] content;
         MediaType mediaType;
@@ -114,18 +118,26 @@ public class MarketController {
             content = exportService.csv(rows);
             mediaType = new MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8);
         } else if (normalized.equals("pdf")) {
-            content = exportService.pdf(rows, filters.applied(), generatedAt);
+            content = exportService.pdf(rows, filters.applied(), generatedAt, zoneId);
             mediaType = MediaType.APPLICATION_PDF;
         } else {
             throw new IllegalArgumentException("format must be csv or pdf");
         }
-        String filename = "market-export-" + LocalDate.ofInstant(generatedAt, ZoneOffset.UTC)
+        String filename = "market-export-" + LocalDate.ofInstant(generatedAt, zoneId)
                 .toString().replace("-", "") + "." + normalized;
         return ResponseEntity.ok()
                 .contentType(mediaType)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename(filename).build().toString())
                 .body(content);
+    }
+
+    private static ZoneId parseTimeZone(String timeZone) {
+        try {
+            return ZoneId.of(timeZone);
+        } catch (DateTimeException exception) {
+            throw new IllegalArgumentException("time_zone must be a valid IANA time zone");
+        }
     }
 
     @GetMapping("/health")

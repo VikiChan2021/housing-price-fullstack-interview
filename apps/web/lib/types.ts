@@ -49,19 +49,6 @@ export type PropertyPage = {
   request_id: string;
 };
 
-export type SegmentResponse = {
-  group_by: "bedrooms" | "year_band" | "price_band";
-  segments: Array<{
-    key: string;
-    label: string;
-    count: number;
-    average_price: number;
-    median_price: number;
-  }>;
-  applied_filters: Record<string, number>;
-  request_id: string;
-};
-
 export type WhatIfResponse = {
   baseline_prediction: number;
   scenario_prediction: number;
@@ -77,5 +64,4 @@ export type WhatIfResponse = {
 export type MarketInitialData = {
   summary: MarketSummary;
   properties: PropertyPage;
-  segments: SegmentResponse;
 };

@@ -135,6 +135,11 @@ paths:
           in: query
           required: true
           schema: { type: string, enum: [csv, pdf] }
+        - name: time_zone
+          in: query
+          required: false
+          description: IANA time zone used for the generated timestamp and export filename
+          schema: { type: string, default: UTC, example: Asia/Hong_Kong }
         - $ref: "#/components/parameters/MinPrice"
         - $ref: "#/components/parameters/MaxPrice"
         - $ref: "#/components/parameters/Bedrooms"

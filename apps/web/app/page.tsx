@@ -19,7 +19,7 @@ export default function Home() {
         <Link className="feature-card warm" href="/market">
           <span className="card-index">02</span>
           <h2>Market Analysis</h2>
-          <p>Filter all 50 records, inspect segments, run what-if analysis, and export evidence.</p>
+          <p>Filter all 50 records, inspect matching properties, run what-if analysis, and export evidence.</p>
           <span className="text-link">Open market dashboard →</span>
         </Link>
       </div>

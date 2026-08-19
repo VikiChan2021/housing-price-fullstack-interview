@@ -16,10 +16,9 @@ async function readJson<T>(path: string): Promise<T> {
 }
 
 export async function getInitialMarketData(): Promise<MarketInitialData> {
-  const [summary, properties, segments] = await Promise.all([
+  const [summary, properties] = await Promise.all([
     readJson<MarketInitialData["summary"]>("/api/v1/market/summary"),
     readJson<MarketInitialData["properties"]>("/api/v1/market/properties?page=0&size=10&sort=id,asc"),
-    readJson<MarketInitialData["segments"]>("/api/v1/market/segments?group_by=bedrooms"),
   ]);
-  return { summary, properties, segments };
+  return { summary, properties };
 }
