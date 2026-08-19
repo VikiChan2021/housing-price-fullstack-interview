@@ -1,90 +1,156 @@
-# Housing Price Fullstack Interview Project
+# Housing Price Full-Stack Interview Project
 
-这是一个文档先行的面试项目仓库。目标是交付一套可现场演示的房价预测全栈系统：模型服务使用 FastAPI，房产估价应用使用 Python 后端，市场分析应用使用 Java/Spring Boot 后端，统一门户使用 Next.js。
+**English** | [简体中文](README.zh-CN.md)
 
-## 当前状态
+A documentation-first, interview-ready housing price platform built from the supplied 50-row dataset. The project demonstrates reproducible machine learning, explicit HTTP contracts, Python and Java backend integration, a Next.js portal, containerized local execution, and a real Tencent Cloud deployment.
 
-| 层级 | 状态 |
+> This is a technical demonstration, not a commercial appraisal product or financial advice.
+
+## Live Demo
+
+- Housing portal: <https://kandian.site/housing>
+- Source code: <https://github.com/VikiChan2021/housing-price-fullstack-interview>
+
+## Current Status
+
+Status last reviewed: **2026-08-19**.
+
+| Area | Current status |
 |---|---|
-| 原始题目与数据归档 | 已完成并校验 |
-| 需求、架构、接口、测试和实施文档 | 已完成开发前审计并获批准 |
-| 工程基线 | Phase 0B 已验证通过 |
-| 应用代码 | Phase 1~4 已完成本地验收 |
-| Docker/本地运行 | 四服务 Compose 已实现并通过健康等待、关闭和重启验证 |
-| 浏览器端到端验收 | Estimator、Market、导出、故障与恢复已在真实 Chromium 验证 |
-| 公网部署 | 腾讯云已部署并通过真实 Chrome 验收：[kandian.site/housing](https://kandian.site/housing) |
+| Original task and source data | Archived, hashed, and kept immutable |
+| Requirements, architecture, API, testing, and ADRs | Reviewed and accepted before implementation |
+| Phase 0B engineering baseline | Complete and verified |
+| Phases 1–4 application implementation | Complete with component/service acceptance |
+| Phase 5 Docker Compose integration | Complete; build, health-based startup, shutdown, restart, smoke, and failure recovery verified |
+| Local browser acceptance | Complete in real Chromium at 1280×800 and 360×800 |
+| Tencent Cloud deployment | Deployed and fully browser-verified on 2026-08-15 |
+| GitHub source delivery | Repository is published; the final post-documentation clean-clone replay is pending |
+| Phase 6 delivery | In progress |
 
-本地与腾讯云公网验证均已执行；最终 GitHub 干净克隆仍未执行。
+### Remaining delivery checks
 
-## 后续 AI 开发的阅读顺序
+- Run the complete stack from a fresh GitHub clone after the final documentation commit.
+- Complete a timed 8–12 minute interview rehearsal.
+- An independent axe accessibility scan has not been run; keyboard and semantic checks were completed.
 
-1. [AGENTS.md](AGENTS.md)
-2. [文档索引](docs/INDEX.md)
-3. [项目要求](docs/requirements/PROJECT_REQUIREMENTS.md)
-4. [验收标准](docs/requirements/ACCEPTANCE_CRITERIA.md)
-5. [系统架构](docs/architecture/SYSTEM_ARCHITECTURE.md)
-6. [API 契约](docs/api/API_CONTRACTS.md)
-7. [数据与模型设计](docs/architecture/DATA_AND_ML_DESIGN.md)
-8. [实施路线](docs/development/IMPLEMENTATION_ROADMAP.md)
-9. [测试策略](docs/testing/TEST_STRATEGY.md)
-10. [本地运行与部署设计](docs/operations/LOCAL_RUN_AND_DEPLOYMENT.md)
+The project is implemented, locally verified, and publicly deployed. It is not described as enterprise production-ready: authentication, rate limiting, centralized monitoring, high availability, formal backup, and an operational service-level objective remain outside this interview scope.
 
-## 硬性技术约束
+## Architecture
 
-- Python 3.12+
-- FastAPI
-- scikit-learn
-- Next.js App Router
-- Tailwind CSS
-- Java 21
-- Spring Boot 3.4.4
-- Docker 容器化
-- GitHub 源码交付
-- 面试现场可演示
+```mermaid
+flowchart LR
+    Browser["Browser"] --> Web["Next.js Web + same-origin BFF"]
+    Web --> Estimator["Estimator API - FastAPI"]
+    Web --> Market["Market API - Spring Boot"]
+    Estimator --> ML["ML API - FastAPI + scikit-learn"]
+    Market --> ML
+    Market --> Cache["Caffeine cache"]
+    Market --> CSV["Immutable source CSV"]
+    ML --> Artifact["Ridge artifact + metadata"]
+    Browser --> History["Versioned localStorage history"]
+```
 
-冻结的直接版本和 lockfile 策略见 [ADR-004](docs/adr/ADR-004-version-pinning.md)。版本选择基于 2026-08-14 官方兼容性快照；正式实现使用 lockfile 和容器镜像摘要保持可复现。
+The browser never calls the ML API directly. `estimator-api` and `market-api` both call the same ML service over HTTP, keeping model inference in one place. Next.js Route Handlers provide a same-origin Backend for Frontend (BFF) for browser requests.
 
-## 目标系统
+## Implemented Services
 
-- `ml-api`：训练产物加载、单条/批量房价预测、模型信息和健康检查。
-- `estimator-api`：App 1 的 Python 业务后端，校验请求并调用 `ml-api`。
-- `market-api`：App 2 的 Java 业务后端，完成数据聚合、筛选、缓存和 what-if 调用。
-- `web`：统一 Next.js Portal，提供估价和市场分析两个应用。
+| Component | Technology | Responsibility |
+|---|---|---|
+| `web` | Next.js App Router, React, TypeScript | Shared portal, Estimator UI, Market UI, local history, comparison, Server Component loading, BFF routes, downloads |
+| `ml-api` | Python, FastAPI, scikit-learn | Reproducible training, artifact loading, single/batch prediction, model information, range warnings, health/readiness |
+| `estimator-api` | Python, FastAPI, HTTPX | Product-facing validation, ML orchestration, estimate metadata, stable dependency error mapping |
+| `market-api` | Java 21, Spring Boot 3.4.4 | CSV loading, filters, statistics, pagination, segments, Caffeine caching, what-if calls, CSV/PDF export |
 
-## 仓库结构
+## Key Features
+
+### Property Estimator
+
+- Seven validated property inputs.
+- Model-backed price estimate with model version and range warnings.
+- Versioned browser-local history, limited to 20 records.
+- Comparison of up to three saved estimates.
+- Retryable dependency errors with `X-Request-ID`.
+
+### Market Analysis
+
+- Server-rendered initial summary, properties, and segments.
+- Price, bedroom, area, year, school, and distance filtering supported by the API.
+- Pagination, allowlisted sorting, and bedroom/year/price segments.
+- Ordered baseline/scenario what-if prediction through the shared ML API.
+- Bounded Caffeine summary cache with normalized keys.
+- Real UTF-8 CSV and multi-page PDF exports.
+
+### Reliability and Delivery
+
+- Stable JSON error envelope and field-level validation errors.
+- Bounded downstream timeouts with explicit 502/503/504 mappings.
+- Request ID propagation across service boundaries.
+- Separate health and readiness endpoints.
+- Four Docker images with non-root runtime users and explicit memory limits.
+- Nginx HTTPS path proxy under `/housing`; backend ports are loopback-only on the server.
+
+## Model and Reproducibility
+
+The final model is `Pipeline(StandardScaler, Ridge)`. The small dataset has strongly correlated features, and the original task requires model coefficients, so Ridge preserves a simple linear model while reducing coefficient instability.
+
+| Item | Value |
+|---|---|
+| Training rows | 50 |
+| Prediction rows | 10 |
+| Model features | 7; `id` is excluded |
+| Evaluation | Deterministic nested 5-fold cross-validation |
+| Selected alpha | `0.1` |
+| Model version | `ridge-v1-0e36c622-a05bac12` |
+| R² | `0.984720 ± 0.004843` |
+| MAE | `7378.35 ± 1481.66` |
+| RMSE | `9311.09 ± 2144.91` |
+
+The artifact metadata records feature order, coefficients, scaler statistics, training data SHA-256, training configuration SHA-256, dependency versions, evaluation protocol, metrics, and limitations. Inputs inside the API hard bounds but outside the observed training range are predicted with structured warnings.
+
+## Technology Baseline
+
+| Area | Frozen baseline |
+|---|---|
+| Python | Python 3.12.13, uv 0.11.32, FastAPI 0.139.2, scikit-learn 1.9.0 |
+| Web | Node.js 24.18.0, pnpm 11.15.1, Next.js 16.2.12, React 19.2.8, TypeScript 5.9.3 |
+| Java | Java 21, Spring Boot 3.4.4, Maven Wrapper 3.9.16 |
+| Runtime | Docker Compose v2; base images are digest-pinned across all four Dockerfiles |
+
+Direct dependencies are pinned, and transitive dependencies are controlled by `uv.lock`, `pnpm-lock.yaml`, and Maven dependency management. See [ADR-004](docs/adr/ADR-004-version-pinning.md) for the versioning decision.
+
+## Repository Layout
 
 ```text
 .
-├─ apps/web/                  # Next.js Portal 与 standalone Dockerfile
+├─ apps/web/                  # Next.js portal, BFF routes, component tests
 ├─ services/
-│  ├─ ml-api/                 # FastAPI 模型服务，Phase 1 已完成
-│  ├─ estimator-api/          # Python 估价业务服务，Phase 2 已完成
-│  └─ market-api/             # Spring Boot 市场服务，Phase 3 已完成
-├─ packages/api-contracts/    # OpenAPI 3.1 与共享 schema 基线
-├─ data/raw/                  # 原始 CSV，只读
-├─ models/                    # 后续生成的模型产物，不提交大文件
-├─ infra/docker/              # Docker 约定
-├─ output/playwright/         # 本地浏览器证据，已被 Git 忽略
-├─ docs/                      # 项目事实与设计的主要入口
-└─ references/original/       # 面试官原始题目，只读
+│  ├─ ml-api/                 # Training, runtime inference, FastAPI, tests
+│  ├─ estimator-api/          # Product estimate API and ML HTTP client
+│  └─ market-api/             # Spring Boot market analytics and exports
+├─ packages/api-contracts/    # OpenAPI 3.1 snapshots and shared schemas
+├─ data/raw/                  # Immutable supplied CSV files
+├─ models/                    # Reviewable metadata; binary artifact is generated
+├─ infra/
+│  ├─ docker/                 # Shared Docker conventions
+│  └─ tencent/                # Hosted environment and Nginx path proxy
+├─ docs/                      # Requirements, architecture, ADRs, testing, operations
+├─ references/original/       # Immutable original interview task
+└─ compose.yaml               # Four-service local runtime topology
 ```
 
-## 原始资料
+Generated dependencies, build outputs, model binaries, browser evidence, local environment files, logs, and IDE state are excluded from Git. See [`.gitignore`](.gitignore) and [`.dockerignore`](.dockerignore).
 
-- [原始题目 PDF](references/original/Interview%20Tasks%20Fullstack.pdf)
-- [训练数据](data/raw/House%20Price%20Dataset.csv)
-- [待预测数据](data/raw/Test%20Data%20For%20Prediction.csv)
-- [资料清单与 SHA-256](references/README.md)
+## Run Locally with Docker Compose
 
-## 开发启动条件
+### Prerequisites
 
-文档决策和 Phase 0B 工程基线均已完成，G0~G6 为 PASS；运行证据见 [正式开发就绪审计](docs/development/DEVELOPMENT_READINESS.md)。Phase 1~5 已完成本地、容器与真实浏览器验收，当前进入 Phase 6 交付整理。
+- Git.
+- Docker Desktop or a compatible Docker Engine with Compose v2.
+- Available local ports 3000, 8000, 8001, and 8080, unless overridden in `.env`.
 
-默认顺序为模型与 ML API、Estimator API、Market API、Next.js Portal、Compose 集成、真实浏览器验收。
+No host installation of Python, Java, Node.js, Maven, or pnpm is required for the Compose path.
 
-## 一键本地运行
-
-前置条件仅为 Git、Docker Desktop（含 Compose v2）以及可用端口 3000、8000、8001、8080：
+### Start
 
 ```powershell
 docker compose config
@@ -92,44 +158,100 @@ docker compose up --build -d --wait
 docker compose ps
 ```
 
-入口：
+### Local endpoints
 
-- Portal：`http://localhost:3000`
-- ML Swagger：`http://localhost:8000/docs`
-- ML API：`http://localhost:8000`
-- Estimator API：`http://localhost:8001`
-- Market API：`http://localhost:8080`
+| Endpoint | URL |
+|---|---|
+| Portal | <http://localhost:3000> |
+| Web readiness | <http://localhost:3000/api/ready> |
+| ML Swagger UI | <http://localhost:8000/docs> |
+| ML API | <http://localhost:8000> |
+| Estimator API | <http://localhost:8001> |
+| Market API | <http://localhost:8080> |
 
-停止并移除本项目容器及网络：
+### Minimal smoke check
+
+```powershell
+Invoke-RestMethod http://localhost:3000/api/ready
+Invoke-RestMethod http://localhost:8000/health
+Invoke-RestMethod http://localhost:8001/health
+Invoke-RestMethod http://localhost:8080/health
+Invoke-RestMethod http://localhost:8080/api/v1/market/summary
+```
+
+### Stop
 
 ```powershell
 docker compose down
 ```
 
-## 质量检查
+This removes the project containers and network; it does not delete source files or local images.
 
-各组件使用冻结 lockfile/Maven Wrapper；完整策略见[测试策略](docs/testing/TEST_STRATEGY.md)。最短 Compose smoke 为：
+## Verification Summary
 
-```powershell
-docker compose up -d --wait
-Invoke-RestMethod http://localhost:3000/api/ready
-Invoke-RestMethod http://localhost:8080/api/v1/market/summary
-```
+The last full local acceptance on **2026-08-15** recorded:
 
-最近一次本地验收通过 14 项 ML 测试、13 项 Estimator 测试、14 项 Market 测试和 7 项 Web 测试，并完成四服务真实浏览器 E2E。腾讯云公网已验证 Estimator、Market RSC、what-if、CSV/PDF、桌面/移动布局和旧站回归；最终 GitHub 干净克隆仍标记为未验证。
+| Component | Result |
+|---|---|
+| ML API | 14 tests passed; 87.78% coverage; Ruff, strict mypy, OpenAPI validation, container and Swagger acceptance passed |
+| Estimator API | 13 tests passed; 91.36% coverage; Ruff, strict mypy, OpenAPI and real ML HTTP integration passed |
+| Market API | 14 Java tests passed; data, cache, HTTP failures, what-if, CSV and PDF verified |
+| Web | 7 Vitest tests passed; ESLint, strict TypeScript and production build passed |
+| Compose | Four images built; all services healthy; shutdown and clean restart passed |
+| Browser | Estimator, Market RSC, filters, sorting, what-if, downloads, failure and recovery passed in real Chromium |
 
-## 公网地址
+The browser acceptance checked DOM behavior, keyboard flow, console, network, downloads, and 1280×800/360×800 viewports. Expected 503/504 responses during failure injection were treated as intentional evidence, not normal-flow errors.
 
-- 房价项目：<https://kandian.site/housing>
-- 原“看点名著”：<https://kandian.site/zh-CN/>
+See the [test strategy](docs/testing/TEST_STRATEGY.md), [acceptance criteria](docs/requirements/ACCEPTANCE_CRITERIA.md), and [project status](docs/PROJECT_STATUS.md) for detailed evidence boundaries.
 
-公网使用同一域名证书。Nginx 仅将 `/housing` 子路径代理到独立 Compose Web 容器，原站根路径和 `/api/` 路由不变；生产拓扑与回滚说明见 [Tencent Cloud deployment](infra/tencent/README.md)。
+## Documentation Reading Order
 
-## 模型与产品限制
+1. [Contributor/agent instructions](AGENTS.md)
+2. [Documentation index](docs/INDEX.md)
+3. [Project requirements](docs/requirements/PROJECT_REQUIREMENTS.md)
+4. [Acceptance criteria](docs/requirements/ACCEPTANCE_CRITERIA.md)
+5. [System architecture](docs/architecture/SYSTEM_ARCHITECTURE.md)
+6. [API contracts](docs/api/API_CONTRACTS.md)
+7. [Data and ML design](docs/architecture/DATA_AND_ML_DESIGN.md)
+8. [Implementation roadmap](docs/development/IMPLEMENTATION_ROADMAP.md)
+9. [Test strategy](docs/testing/TEST_STRATEGY.md)
+10. [Local run and deployment](docs/operations/LOCAL_RUN_AND_DEPLOYMENT.md)
+11. [Interview demo runbook](docs/operations/INTERVIEW_DEMO_RUNBOOK.md)
 
-- 模型只基于题目提供的 50 条演示数据，不是商业估价或金融建议。
-- 特征存在较强相关性，样本量小，训练范围外预测可靠性更低。
-- `id` 只用于标识，不参与训练；模型推理由 `ml-api` 单点负责。
-- 历史只保存在当前浏览器 localStorage；Market 缓存是可丢失的进程内 Caffeine。
+## Original Materials
 
-启动失败时按 ML → Estimator/Market → Web 的顺序检查 `docker compose ps` 和 `docker compose logs <service>`，并使用响应中的 `X-Request-ID` 关联排查。更详细步骤见[本地运行与部署](docs/operations/LOCAL_RUN_AND_DEPLOYMENT.md)。
+- [Original interview task PDF](references/original/Interview%20Tasks%20Fullstack.pdf)
+- [Training dataset](data/raw/House%20Price%20Dataset.csv)
+- [Prediction dataset](data/raw/Test%20Data%20For%20Prediction.csv)
+- [Source inventory and SHA-256 hashes](references/README.md)
+
+`data/raw/` and `references/original/` are immutable project inputs.
+
+## Hosted Deployment
+
+The housing portal runs in an isolated Compose project on Tencent Cloud. Nginx proxies only `/housing` and its descendants to the Web container on loopback port 13300. The Estimator, Market, and ML host ports are also bound to `127.0.0.1`; service-to-service traffic uses the private Compose network.
+
+The deployment reuses the existing `kandian.site` TLS certificate and preserves the root application and existing `/api/` routes. Deployment steps, server environment placeholders, Nginx configuration, and rollback order are documented in [infra/tencent/README.md](infra/tencent/README.md).
+
+## Limitations
+
+- The model is trained on only 50 demonstration rows and is not suitable for real property valuation.
+- Features are strongly correlated; individual coefficients must not be interpreted as causal effects.
+- Important real-world variables such as location categories, condition, renovation, and transaction time are absent.
+- Predictions outside observed training ranges are less reliable.
+- Estimate history is stored only in the current browser.
+- The Caffeine cache is in-process and intentionally disposable.
+- The hosted stack is single-server and has no authentication, rate limiting, centralized observability, or high availability.
+
+## Troubleshooting
+
+Check failures from the deepest dependency outward:
+
+1. `docker compose config` for environment interpolation.
+2. `docker compose ps` for container health.
+3. `docker compose logs ml-api`.
+4. Estimator and Market health/readiness and logs.
+5. Web readiness, browser Network, and browser Console.
+6. Use `X-Request-ID` from the response or error body to correlate a failed request.
+
+More detail is available in [Local Run and Deployment](docs/operations/LOCAL_RUN_AND_DEPLOYMENT.md).
