@@ -7,6 +7,11 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * Shared feature contract sent to the ML API and accepted by what-if requests.
+ * Jackson annotations define wire names, while Bean Validation annotations reject invalid request
+ * bodies before controller logic runs. Wrapper types allow {@code @NotNull} to detect omissions.
+ */
 public record PropertyFeatures(
         @JsonProperty("square_footage")
         @NotNull @DecimalMin(value = "0", inclusive = false) @DecimalMax("100000") Double squareFootage,

@@ -1,5 +1,8 @@
+"""Single source of truth for training, artifact, and HTTP feature ordering."""
+
 from typing import Final
 
+# Feature order is part of the serialized model contract; changing it requires retraining.
 FEATURE_NAMES: Final[tuple[str, ...]] = (
     "square_footage",
     "bedrooms",
@@ -14,6 +17,7 @@ PREDICTION_COLUMNS: Final[tuple[str, ...]] = FEATURE_NAMES
 INTEGER_FIELDS: Final[frozenset[str]] = frozenset({"id", "bedrooms", "year_built"})
 RANDOM_SEED: Final = 42
 N_SPLITS: Final = 5
+# The finite grid keeps hyperparameter selection deterministic and reviewable.
 ALPHA_GRID: Final[tuple[float, ...]] = (0.01, 0.1, 1.0, 10.0, 100.0)
 EVALUATION_IMPLEMENTATION_VERSION: Final = "nested-cv-v1"
 

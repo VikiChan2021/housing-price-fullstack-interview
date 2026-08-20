@@ -1,5 +1,7 @@
 "use client";
 
+// This client boundary retains dashboard state while users navigate within the shared layout.
+
 import {
   createContext,
   type Dispatch,
@@ -41,11 +43,13 @@ type MarketStateContextValue = {
 
 const MarketStateContext = createContext<MarketStateContextValue>({
   cachedState: null,
+  // The no-op default keeps isolated consumers safe; the layout installs the real provider.
   setCachedState: () => undefined,
 });
 
 export function MarketStateProvider({ children }: { children: ReactNode }) {
   const [cachedState, setCachedState] = useState<MarketViewState | null>(null);
+  // Memoization avoids notifying consumers when neither context field has changed.
   const value = useMemo(() => ({ cachedState, setCachedState }), [cachedState]);
 
   return <MarketStateContext.Provider value={value}>{children}</MarketStateContext.Provider>;

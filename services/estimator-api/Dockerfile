@@ -1,4 +1,5 @@
 # syntax=docker/dockerfile:1.7
+# A fixed digest prevents a moving base tag from changing the reviewed runtime.
 FROM python@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf
 
 ARG UV_VERSION=0.11.32
@@ -13,11 +14,13 @@ RUN pip install --no-cache-dir "uv==${UV_VERSION}" \
     && addgroup --system app \
     && adduser --system --ingroup app app
 COPY services/estimator-api/pyproject.toml services/estimator-api/uv.lock ./
+# Copy dependency manifests before source so unchanged dependencies reuse the image layer.
 RUN uv sync --frozen --no-dev
 COPY --chown=app:app services/estimator-api/app ./app
 
 USER app
 EXPOSE 8001
+# Health may be degraded when ML is down; readiness at the Web layer performs stricter gating.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=2)"
 

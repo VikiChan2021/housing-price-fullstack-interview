@@ -23,6 +23,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Renders filtered market rows as spreadsheet-friendly CSV or a paginated PDF report.
+ * Export formatting stays outside the controller so binary generation can be tested directly.
+ */
 @Service
 public class ExportService {
     private static final String CSV_HEADER = "id,square_footage,bedrooms,bathrooms,year_built,"
@@ -55,7 +59,9 @@ public class ExportService {
                     FilterType.DISTANCE));
 
     public byte[] csv(List<MarketProperty> rows) {
+        // The UTF-8 BOM improves Excel compatibility; CRLF keeps the downloaded file portable.
         StringBuilder csv = new StringBuilder("\uFEFF").append(CSV_HEADER);
+        // Every source field is numeric, so no value can contain a comma, quote, or line break.
         for (MarketProperty row : rows) {
             csv.append(row.id()).append(',').append(row.squareFootage()).append(',')
                     .append(row.bedrooms()).append(',').append(row.bathrooms()).append(',')
@@ -68,10 +74,12 @@ public class ExportService {
 
     public byte[] pdf(List<MarketProperty> rows, Map<String, Number> filters, Instant generatedAt,
                       ZoneId timeZone) {
+        // Try-with-resources closes both the PDF document and byte buffer on success or failure.
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             int rowIndex = 0;
             int pageNumber = 1;
+            // A do-while intentionally creates one explanatory page even when no rows match.
             do {
                 PDPage page = new PDPage(PAGE_SIZE);
                 document.addPage(page);
@@ -79,6 +87,7 @@ public class ExportService {
                     float tableTop = pageNumber == 1
                             ? drawReportHeader(content, rows, filters, generatedAt, timeZone)
                             : drawContinuationHeader(content);
+                    // drawTable returns the first row not yet rendered, which drives pagination.
                     rowIndex = drawTable(content, rows, rowIndex, tableTop);
                     drawFooter(content, pageNumber);
                 }
@@ -95,12 +104,14 @@ public class ExportService {
     private static float drawReportHeader(PDPageContentStream content, List<MarketProperty> rows,
                                           Map<String, Number> filters, Instant generatedAt,
                                           ZoneId timeZone) throws IOException {
+        // PDF coordinates start at the bottom-left corner, so smaller y values move down the page.
         setGreen(content);
         drawText(content, BOLD, 9, PAGE_MARGIN, 570, "HEARTH & METRIC  /  MARKET ANALYSIS");
         setInk(content);
         drawText(content, BOLD, 24, PAGE_MARGIN, 535, "Housing Market Export");
 
         String timestamp = DateTimeFormatter.ofPattern("MMM d, uuuu, h:mm a z", Locale.US)
+                // Formatting an Instant with an explicit zone avoids dependence on the server default.
                 .withZone(timeZone).format(generatedAt);
         setMuted(content);
         drawText(content, REGULAR, 9, PAGE_MARGIN, 512,
@@ -146,6 +157,7 @@ public class ExportService {
         List<Double> prices = rows.stream().map(MarketProperty::price).sorted().toList();
         String average = prices.isEmpty() ? "-" : formatCurrency(
                 prices.stream().mapToDouble(Double::doubleValue).average().orElseThrow());
+        // Even-sized samples use the mean of the two central values; odd samples use the center.
         String median = prices.isEmpty() ? "-" : formatCurrency(prices.size() % 2 == 0
                 ? (prices.get(prices.size() / 2 - 1) + prices.get(prices.size() / 2)) / 2
                 : prices.get(prices.size() / 2));
@@ -192,6 +204,7 @@ public class ExportService {
 
         int rowIndex = startIndex;
         float rowTop = tableTop - TABLE_HEADER_HEIGHT;
+        // Reserve 42 points for the footer and stop before the next row would overlap it.
         while (rowIndex < rows.size() && rowTop - TABLE_ROW_HEIGHT >= 42) {
             float rowBottom = rowTop - TABLE_ROW_HEIGHT;
             if ((rowIndex - startIndex) % 2 == 1) {
@@ -255,6 +268,7 @@ public class ExportService {
             return "None - showing all supplied records";
         }
         List<String> values = new ArrayList<>();
+        // Iterate the allowlisted definitions so labels and display order do not depend on map order.
         for (FilterDefinition definition : FILTER_DEFINITIONS) {
             Number value = filters.get(definition.key());
             if (value != null) {
@@ -265,6 +279,7 @@ public class ExportService {
     }
 
     private static String formatFilterValue(Number value, FilterType type) {
+        // A switch expression must cover every enum constant and directly yields the formatted value.
         return switch (type) {
             case CURRENCY -> formatCurrency(value.doubleValue());
             case AREA -> formatNumber(value.doubleValue()) + " sq ft";
@@ -289,6 +304,7 @@ public class ExportService {
         StringBuilder current = new StringBuilder();
         for (String word : text.split(" ")) {
             String candidate = current.isEmpty() ? word : current + " " + word;
+            // PDF font widths use 1/1000 text-space units and must be scaled by the font size.
             float width = font.getStringWidth(candidate) / 1000 * fontSize;
             if (width > maxWidth && !current.isEmpty()) {
                 lines.add(current.toString());
@@ -308,6 +324,7 @@ public class ExportService {
         content.beginText();
         content.setFont(font, fontSize);
         content.newLineAtOffset(x, y);
+        // Standard Type 1 fonts support printable ASCII only; replace unsupported glyphs safely.
         content.showText(text.replaceAll("[^\\x20-\\x7E]", "?"));
         content.endText();
     }
@@ -329,6 +346,7 @@ public class ExportService {
         content.setLineWidth(.6f);
     }
 
+    // Small private records make layout metadata immutable without exposing it as API state.
     private record Column(String label, float width) {
     }
 

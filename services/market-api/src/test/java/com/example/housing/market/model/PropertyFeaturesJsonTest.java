@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/** Ensures Java naming conventions cannot accidentally drift from the ML API wire contract. */
 class PropertyFeaturesJsonTest {
     @Test
     void serializesTheMlContractFieldNames() throws Exception {
@@ -13,6 +14,7 @@ class PropertyFeaturesJsonTest {
 
         String json = new ObjectMapper().writeValueAsString(features);
 
+        // Positive and negative assertions catch both missing snake_case and leaked camelCase names.
         assertThat(json).contains("\"square_footage\":1550.0")
                 .contains("\"year_built\":1997")
                 .contains("\"distance_to_city_center\":4.1")

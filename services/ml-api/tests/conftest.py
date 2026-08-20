@@ -1,3 +1,5 @@
+"""Shared fixtures that train one real artifact and drive FastAPI lifespan-aware requests."""
+
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -19,6 +21,7 @@ def repository_root() -> Path:
 def trained_artifacts(
     tmp_path_factory: pytest.TempPathFactory, repository_root: Path
 ) -> tuple[Path, Path]:
+    # Training once per session keeps API tests realistic without repeating nested CV per case.
     directory = tmp_path_factory.mktemp("trained-model")
     model_path = directory / "model.joblib"
     metadata_path = directory / "metadata.json"
@@ -34,6 +37,7 @@ def trained_artifacts(
 
 @asynccontextmanager
 async def client_for(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
+    # ASGITransport avoids a network port while executing the real middleware and route stack.
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -41,6 +45,8 @@ async def client_for(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
 
 
 def request(app: FastAPI, method: str, path: str, **kwargs: object) -> httpx.Response:
+    # Tests remain synchronous while each request still runs in a complete async
+    # application lifespan.
     async def send() -> httpx.Response:
         async with client_for(app) as client:
             return await client.request(method, path, **kwargs)

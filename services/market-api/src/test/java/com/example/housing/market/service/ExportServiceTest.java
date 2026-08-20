@@ -13,6 +13,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Verifies exported bytes by reading them back, rather than only checking that generation returns.
+ */
 class ExportServiceTest {
     private final ExportService service = new ExportService();
 
@@ -36,6 +39,7 @@ class ExportServiceTest {
                 Instant.parse("2026-08-14T00:00:00Z"), ZoneId.of("Asia/Hong_Kong"));
 
         assertThat(pdf).startsWith("%PDF".getBytes(StandardCharsets.US_ASCII));
+        // try-with-resources proves PDFBox can parse the complete document and closes it afterward.
         try (PDDocument document = Loader.loadPDF(pdf)) {
             String text = new PDFTextStripper().getText(document);
             assertThat(document.getNumberOfPages()).isGreaterThanOrEqualTo(2);

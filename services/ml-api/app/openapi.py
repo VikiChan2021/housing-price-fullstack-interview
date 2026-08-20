@@ -1,7 +1,10 @@
+"""Hand-authored examples and error models added to generated FastAPI OpenAPI output."""
+
 from typing import Any
 
 from app.schemas import ErrorEnvelope
 
+# FastAPI accepts numeric status keys plus special string keys such as "default".
 OpenApiResponses = dict[int | str, dict[str, Any]]
 
 PREDICT_REQUEST_EXAMPLES: dict[str, dict[str, Any]] = {

@@ -13,6 +13,7 @@ if (-not $docker) {
     throw "Docker CLI was not found. Install and start Docker Desktop first."
 }
 
+# Finding docker.exe proves only the CLI exists; docker info also verifies the Engine connection.
 $dockerInfo = & $docker.Source info --format "{{.ServerVersion}}" 2>&1
 if ($LASTEXITCODE -ne 0) {
     throw "Docker Engine is not running or is unhealthy. Start Docker Desktop and retry. Run 'docker info' separately for the engine error."
@@ -21,11 +22,13 @@ Write-Host "Docker Engine: $dockerInfo"
 
 Push-Location $repositoryRoot
 try {
+    # Validate interpolation and schema before any image build or container mutation.
     & $docker.Source compose config --quiet
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose config validation failed."
     }
 
+    # Build an argument array so optional flags remain separate and safely quoted.
     $arguments = [System.Collections.Generic.List[string]]::new()
     $arguments.Add("compose")
     $arguments.Add("up")
@@ -44,6 +47,7 @@ try {
     }
 }
 finally {
+    # Always restore the caller's working directory, including failed Compose runs.
     Pop-Location
 }
 

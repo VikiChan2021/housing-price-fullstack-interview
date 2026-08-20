@@ -6,6 +6,10 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+/**
+ * Immutable service-layer filter criteria. A {@code null} component means that criterion was not
+ * supplied, which lets one value object drive filtering, cache keys, response metadata, and exports.
+ */
 public record MarketFilters(
         Double minPrice, Double maxPrice, Integer bedrooms,
         Double minSquareFootage, Double maxSquareFootage, Double minBathrooms,
@@ -13,6 +17,7 @@ public record MarketFilters(
         Double maxDistanceToCityCenter) {
 
     public MarketFilters validated() {
+        // Reject NaN and infinities first because ordinary range comparisons do not handle NaN safely.
         checkFinite(minPrice, "min_price");
         checkFinite(maxPrice, "max_price");
         checkFinite(minSquareFootage, "min_square_footage");
@@ -20,6 +25,7 @@ public record MarketFilters(
         checkFinite(minBathrooms, "min_bathrooms");
         checkFinite(minSchoolRating, "min_school_rating");
         checkFinite(maxDistanceToCityCenter, "max_distance_to_city_center");
+        // && binds more tightly than ||, so either non-null negative bound rejects the request.
         if (minPrice != null && minPrice < 0 || maxPrice != null && maxPrice < 0) {
             throw new IllegalArgumentException("price filters must be >= 0");
         }
@@ -61,6 +67,7 @@ public record MarketFilters(
     }
 
     public boolean matches(MarketProperty row) {
+        // Every clause follows "criterion absent OR row satisfies criterion" for composable AND filters.
         return (minPrice == null || row.price() >= minPrice)
                 && (maxPrice == null || row.price() <= maxPrice)
                 && (bedrooms == null || row.bedrooms() == bedrooms)
@@ -75,6 +82,7 @@ public record MarketFilters(
     }
 
     public Map<String, Number> applied() {
+        // Collect known fields in sorted order, then expose only non-null values as immutable metadata.
         Map<String, Number> values = new TreeMap<>();
         put(values, "min_price", minPrice);
         put(values, "max_price", maxPrice);
@@ -96,6 +104,7 @@ public record MarketFilters(
     }
 
     public String normalizedKey() {
+        // Canonical numeric spellings make 200000 and 200000.0 share one summary cache entry.
         return applied().entrySet().stream()
                 .map(entry -> entry.getKey() + "=" + normalize(entry.getValue()))
                 .collect(Collectors.joining("&"));
@@ -103,6 +112,7 @@ public record MarketFilters(
 
     private static String normalize(Number value) {
         double number = value.doubleValue();
+        // Math.rint detects integral doubles without losing non-integral filter precision.
         return number == Math.rint(number) ? Long.toString((long) number) : Double.toString(number);
     }
 }

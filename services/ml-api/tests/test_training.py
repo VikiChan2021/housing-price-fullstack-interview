@@ -1,3 +1,5 @@
+"""End-to-end training tests for deterministic and reviewable artifact output."""
+
 import csv
 import json
 from pathlib import Path
@@ -13,6 +15,7 @@ from app.training import train
 def test_training_is_reproducible_and_writes_reviewable_artifacts(
     tmp_path: Path, repository_root: Path
 ) -> None:
+    # Independent directories ensure equality comes from training, not reused output files.
     outputs = []
     for run in ("one", "two"):
         directory = tmp_path / run
@@ -28,6 +31,7 @@ def test_training_is_reproducible_and_writes_reviewable_artifacts(
         outputs.append((metadata, artifact["pipeline"].predict(features), directory))
 
     first, second = outputs
+    # The binary predictions and reviewable metrics must be identical across repeated runs.
     assert first[0]["model_version"] == second[0]["model_version"]
     assert first[0]["metrics"] == second[0]["metrics"]
     assert first[0]["baseline_metrics"] == second[0]["baseline_metrics"]

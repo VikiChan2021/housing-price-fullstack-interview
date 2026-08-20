@@ -1,3 +1,5 @@
+"""Validate immutable source CSV files and convert them into typed NumPy arrays."""
+
 import csv
 import hashlib
 import math
@@ -16,6 +18,8 @@ class DataContractError(ValueError):
 
 @dataclass(frozen=True)
 class TrainingData:
+    """Validated training arrays plus provenance needed for reproducible artifacts."""
+
     features: NDArray[np.float64]
     target: NDArray[np.float64]
     identifiers: tuple[int, ...]
@@ -24,8 +28,11 @@ class TrainingData:
 
 
 def _read_rows(path: Path, expected_columns: tuple[str, ...]) -> list[dict[str, str]]:
+    """Read a non-empty CSV only when its ordered header exactly matches the contract."""
+
     if not path.is_file():
         raise DataContractError(f"CSV file does not exist: {path}")
+    # utf-8-sig consumes an optional BOM without changing the first column name.
     with path.open("r", encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
         if tuple(reader.fieldnames or ()) != expected_columns:
@@ -40,6 +47,8 @@ def _read_rows(path: Path, expected_columns: tuple[str, ...]) -> list[dict[str, 
 
 
 def _number(row: dict[str, str], field: str, row_number: int) -> float:
+    """Parse one finite numeric cell and enforce integer-only fields before casting."""
+
     raw = row.get(field, "")
     if raw is None or raw.strip() == "":
         raise DataContractError(f"Missing {field} at data row {row_number}")
@@ -55,6 +64,8 @@ def _number(row: dict[str, str], field: str, row_number: int) -> float:
 
 
 def load_training_data(path: Path, expected_rows: int = 50) -> TrainingData:
+    """Load the fixed training set while excluding identifiers from model features."""
+
     rows = _read_rows(path, TRAIN_COLUMNS)
     if len(rows) != expected_rows:
         raise DataContractError(f"Expected {expected_rows} training rows, found {len(rows)}")
@@ -63,6 +74,7 @@ def load_training_data(path: Path, expected_rows: int = 50) -> TrainingData:
     if len(set(identifiers)) != len(identifiers):
         raise DataContractError("Training identifiers must be unique")
 
+    # Iterating FEATURE_NAMES here preserves the exact column order expected by the pipeline.
     features = np.asarray(
         [
             [_number(row, field, index) for field in FEATURE_NAMES]
@@ -73,6 +85,7 @@ def load_training_data(path: Path, expected_rows: int = 50) -> TrainingData:
     target = np.asarray(
         [_number(row, "price", index) for index, row in enumerate(rows, 1)], dtype=np.float64
     )
+    # Ranges are stored per feature so inference can warn about extrapolation.
     feature_ranges = {
         name: {"min": float(features[:, index].min()), "max": float(features[:, index].max())}
         for index, name in enumerate(FEATURE_NAMES)
@@ -87,6 +100,8 @@ def load_training_data(path: Path, expected_rows: int = 50) -> TrainingData:
 
 
 def load_prediction_data(path: Path, expected_rows: int = 10) -> NDArray[np.float64]:
+    """Load the supplied prediction rows using the same ordered feature contract."""
+
     rows = _read_rows(path, PREDICTION_COLUMNS)
     if len(rows) != expected_rows:
         raise DataContractError(f"Expected {expected_rows} prediction rows, found {len(rows)}")

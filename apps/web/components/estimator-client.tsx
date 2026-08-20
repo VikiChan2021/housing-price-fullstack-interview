@@ -1,13 +1,17 @@
 "use client";
 
+// Form interaction and versioned localStorage history require a browser-side component.
+
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { withBasePath } from "@/lib/base-path";
 import type { Estimate, PropertyFeatures, RangeWarning } from "@/lib/types";
 
 type SavedEstimate = Estimate & { sequence: number };
+// Legacy version-one entries may not yet contain the stable display sequence.
 type StoredEstimate = Estimate & { sequence?: number };
 
+// Version the storage key so future incompatible schemas can migrate without guessing.
 const historyKey = "housing-estimates:v1";
 const defaults: PropertyFeatures = {
   square_footage: 1550,
@@ -48,9 +52,11 @@ const createdAt = new Intl.DateTimeFormat("en-US", {
 });
 
 function normalizeHistory(estimates: StoredEstimate[]): SavedEstimate[] {
+  // Existing positive sequences are authoritative and must survive reloads unchanged.
   if (estimates.every((item) => Number.isInteger(item.sequence) && Number(item.sequence) > 0)) {
     return estimates as SavedEstimate[];
   }
+  // History is newest-first; reverse a copy so the oldest record receives sequence one.
   const sequences = new Map(estimates.slice().reverse().map((item, index) => [item.estimate_id, index + 1]));
   return estimates.map((item) => ({ ...item, sequence: sequences.get(item.estimate_id)! }));
 }
@@ -71,6 +77,7 @@ function formatWarning(warning: RangeWarning): string {
 }
 
 function parseError(payload: unknown): string {
+  // Narrow unknown JSON defensively before reading the shared backend error envelope.
   if (payload && typeof payload === "object" && "error" in payload) {
     const error = (payload as { error?: { message?: string; request_id?: string } }).error;
     if (error?.message) return `${error.message}${error.request_id ? ` Request: ${error.request_id}` : ""}`;
@@ -86,23 +93,27 @@ export function EstimatorClient() {
   const [lastPayload, setLastPayload] = useState<PropertyFeatures | null>(null);
 
   useEffect(() => {
+    // Browser storage is untrusted: extensions, users, or older builds can leave invalid JSON.
     try {
       const stored = localStorage.getItem(historyKey);
       if (!stored) return;
       const envelope = JSON.parse(stored) as { version?: number; estimates?: StoredEstimate[] };
       if (envelope.version === 1 && Array.isArray(envelope.estimates)) {
         const restored = normalizeHistory(envelope.estimates.slice(0, 20));
+        // Defer state restoration beyond the effect body and persist any legacy migration.
         queueMicrotask(() => {
           setHistory(restored);
           localStorage.setItem(historyKey, JSON.stringify({ version: 1, estimates: restored }));
         });
       }
     } catch {
+      // A corrupt envelope is unrecoverable but must not prevent the estimator from loading.
       localStorage.removeItem(historyKey);
     }
   }, []);
 
   function save(next: SavedEstimate[]) {
+    // Bound browser storage and UI work to the newest 20 estimates.
     const limited = next.slice(0, 20);
     setHistory(limited);
     localStorage.setItem(historyKey, JSON.stringify({ version: 1, estimates: limited }));
@@ -121,6 +132,7 @@ export function EstimatorClient() {
       const body = (await response.json()) as unknown;
       if (!response.ok) throw new Error(parseError(body));
       const estimate = body as Estimate;
+      // Sequence numbers are local display identities and do not depend on current array position.
       const savedEstimate: SavedEstimate = {
         ...estimate,
         sequence: Math.max(0, ...history.map((item) => item.sequence)) + 1,
@@ -136,8 +148,10 @@ export function EstimatorClient() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Native constraints provide immediate UX, while the server still performs authoritative checks.
     if (!event.currentTarget.reportValidity()) return;
     const data = new FormData(event.currentTarget);
+    // Object.fromEntries maps the declarative field registry into the shared API payload shape.
     const payload = Object.fromEntries(fields.map((field) => [field.key, Number(data.get(field.key))])) as PropertyFeatures;
     void requestEstimate(payload);
   }
@@ -145,6 +159,7 @@ export function EstimatorClient() {
   function toggleCompare(id: string) {
     setSelected((current) => {
       if (current.includes(id)) return current.filter((item) => item !== id);
+      // Comparison is intentionally capped at three columns to remain readable on small screens.
       if (current.length >= 3) return current;
       return [...current, id];
     });
@@ -156,6 +171,7 @@ export function EstimatorClient() {
   }
 
   const comparison = history.filter((item) => selected.includes(item.estimate_id));
+  // The compact chart visualizes only recent records while the table retains all saved history.
   const chart = useMemo(() => history.slice(0, 6), [history]);
   const chartMax = Math.max(...chart.map((item) => item.predicted_price), 1);
   const latest = history[0];

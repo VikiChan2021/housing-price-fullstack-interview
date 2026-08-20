@@ -1,3 +1,4 @@
+/** The seven ordered model inputs shared by estimator and market what-if contracts. */
 export type PropertyFeatures = {
   square_footage: number;
   bedrooms: number;
@@ -24,9 +25,11 @@ export type Estimate = {
   model_version: string;
   warnings: RangeWarning[];
   created_at: string;
+  // Saved historical envelopes may predate request ID persistence, so this remains optional.
   request_id?: string;
 };
 
+/** Summary statistics are nullable when valid filters match no source rows. */
 export type MarketSummary = {
   count: number;
   average_price: number | null;
@@ -39,6 +42,7 @@ export type MarketSummary = {
   request_id: string;
 };
 
+// Intersection reuses model features while retaining source-only identity and target price.
 export type MarketProperty = PropertyFeatures & { id: number; price: number };
 
 export type PropertyPage = {

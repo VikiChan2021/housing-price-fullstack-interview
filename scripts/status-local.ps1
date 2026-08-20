@@ -3,6 +3,7 @@ param()
 
 $ErrorActionPreference = "Stop"
 
+# Web readiness covers both business APIs; direct service probes identify the failing layer.
 $checks = @(
     @{ Service = "web"; Uri = "http://127.0.0.1:3000/api/ready" },
     @{ Service = "ml-api"; Uri = "http://127.0.0.1:8000/health" },
@@ -21,6 +22,7 @@ $results = foreach ($check in $checks) {
         }
     }
     catch {
+        # A timeout, connection failure, or non-success status all mean unavailable to this summary.
         [pscustomobject]@{
             Service = $check.Service
             Status = "down"
@@ -31,6 +33,7 @@ $results = foreach ($check in $checks) {
 }
 
 $results | Format-Table -AutoSize
+# A nonzero exit code makes this script suitable for CI or shell health gates.
 if ($results.Status -contains "down") {
     exit 1
 }

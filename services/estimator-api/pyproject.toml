@@ -27,6 +27,7 @@ pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.coverage.run]
+# Branch coverage includes every downstream failure category and readiness branch.
 branch = true
 source = ["app"]
 
@@ -42,6 +43,7 @@ target-version = "py312"
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.mypy]
+# Strict typing verifies the Protocol-based ML client and Pydantic orchestration boundary.
 python_version = "3.12"
 strict = true
 packages = ["app"]

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+/** Render the server-only landing page with links to both implemented workflows. */
 export default function Home() {
   return (
     <main id="main-content" className="page-shell home-hero">

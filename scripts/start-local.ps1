@@ -5,6 +5,7 @@ param(
     [int]$StartupTimeoutSeconds = 240
 )
 
+# Fail on uninitialized variables and convert non-terminating errors into catchable failures.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
@@ -23,6 +24,7 @@ $estimatorPython = Join-Path $estimatorRoot ".venv\Scripts\python.exe"
 $mavenWrapper = Join-Path $marketRoot "mvnw.cmd"
 $webPackagePath = Join-Path $webRoot "package.json"
 $nextEnvironmentPath = Join-Path $webRoot "next-env.d.ts"
+# Next.js may rewrite this generated file during development; preserve the checkout version.
 $nextEnvironmentSnapshot = if (Test-Path -LiteralPath $nextEnvironmentPath -PathType Leaf) {
     [System.IO.File]::ReadAllBytes($nextEnvironmentPath)
 }
@@ -39,6 +41,7 @@ function Assert-FileExists {
 }
 
 function Resolve-JavaHome {
+    # Prefer an explicit JDK, then inspect conventional Windows Java 21 locations.
     $candidates = [System.Collections.Generic.List[string]]::new()
     if ($env:JAVA_HOME) {
         $candidates.Add($env:JAVA_HOME)
@@ -61,6 +64,7 @@ function Resolve-JavaHome {
 }
 
 function Resolve-NodeToolchain {
+    # package.json is the toolchain contract; do not silently run a different Node release.
     $package = Get-Content -LiteralPath $webPackagePath -Raw -Encoding utf8 | ConvertFrom-Json
     $requiredNode = [string]$package.engines.node
     $candidates = [System.Collections.Generic.List[string]]::new()
@@ -103,6 +107,7 @@ function Invoke-WithEnvironment {
         [scriptblock]$Action
     )
 
+    # Environment overrides are process-scoped and restored even when the action throws.
     $original = @{}
     try {
         foreach ($entry in $Environment.GetEnumerator()) {
@@ -139,6 +144,7 @@ function Start-LoggedProcess {
         [string]$Marker
     )
 
+    # Separate logs make concurrent service failures diagnosable without visible console windows.
     $stdoutPath = Join-Path $runDirectory "$Name.out.log"
     $stderrPath = Join-Path $runDirectory "$Name.err.log"
     $process = Invoke-WithEnvironment -Environment $Environment -Action {
@@ -155,6 +161,7 @@ function Start-LoggedProcess {
     return [pscustomobject]@{
         name = $Name
         pid = $process.Id
+        # The marker later protects stop-local.ps1 from killing a reused PID.
         marker = $Marker
         process = $process
         stdout = $stdoutPath
@@ -169,6 +176,7 @@ function Wait-ForEndpoint {
         [System.Diagnostics.Process]$Process
     )
 
+    # Readiness, rather than mere process existence, gates each downstream service startup.
     $deadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
     while ((Get-Date) -lt $deadline) {
         $Process.Refresh()
@@ -192,6 +200,7 @@ function Wait-ForEndpoint {
 function Write-State {
     param([string]$Status, [object[]]$Services)
 
+    # Persist PIDs, ownership markers, and logs so stop/status work in another PowerShell process.
     $state = [ordered]@{
         status = $Status
         repository_root = $repositoryRoot
@@ -215,6 +224,7 @@ function Write-State {
 function Assert-PortAvailable {
     param([int]$Port)
 
+    # Refuse to start when a listener exists instead of terminating an unrelated process.
     $listener = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
         Select-Object -First 1
     if ($listener) {
@@ -223,6 +233,7 @@ function Assert-PortAvailable {
 }
 
 function Restore-NextEnvironmentFile {
+    # Write raw bytes to preserve the original encoding and line endings exactly.
     if ($null -ne $nextEnvironmentSnapshot) {
         [System.IO.File]::WriteAllBytes($nextEnvironmentPath, $nextEnvironmentSnapshot)
     }
@@ -240,6 +251,7 @@ New-Item -ItemType Directory -Path $runtimeRoot -Force | Out-Null
 New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
 
 if (Test-Path -LiteralPath $statePath -PathType Leaf) {
+    # A previous state file is handled by the ownership-aware stop script before new processes start.
     & (Join-Path $PSScriptRoot "stop-local.ps1") -Quiet
 }
 
@@ -251,6 +263,7 @@ $modelPath = Join-Path $repositoryRoot "models\model.joblib"
 $metadataPath = Join-Path $repositoryRoot "models\metadata.json"
 if (-not (Test-Path -LiteralPath $modelPath -PathType Leaf) -or
     -not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) {
+    # Training is an explicit one-time startup prerequisite, never a request-time operation.
     Write-Host "Model artifacts are missing; training them once before startup..."
     Push-Location $mlRoot
     try {
@@ -266,6 +279,7 @@ if (-not (Test-Path -LiteralPath $modelPath -PathType Leaf) -or
 
 $nodeModules = Join-Path $webRoot "node_modules"
 if (-not (Test-Path -LiteralPath $nodeModules -PathType Container)) {
+    # The frozen lockfile keeps local dependency resolution aligned with CI and containers.
     Write-Host "Web dependencies are missing; installing the frozen lockfile once..."
     Invoke-WithEnvironment -Environment @{ Path = "$($nodeToolchain.Home);$env:Path" } -Action {
         Push-Location $webRoot
@@ -283,6 +297,7 @@ if (-not (Test-Path -LiteralPath $nodeModules -PathType Container)) {
 
 $startedServices = [System.Collections.Generic.List[object]]::new()
 try {
+    # Start in dependency order: ML, two business APIs, then the Web readiness aggregator.
     $ml = Start-LoggedProcess `
         -Name "ml-api" `
         -FilePath $mlPython `
@@ -357,6 +372,7 @@ try {
     }
 }
 catch {
+    # Roll back every process recorded before the failure so partial stacks are not left running.
     Restore-NextEnvironmentFile
     Write-State -Status "failed" -Services $startedServices
     & (Join-Path $PSScriptRoot "stop-local.ps1") -Quiet

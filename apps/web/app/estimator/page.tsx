@@ -2,6 +2,7 @@ import { EstimatorClient } from "@/components/estimator-client";
 
 export const metadata = { title: "Property Estimator | Hearth & Metric" };
 
+/** Keep static page framing on the server and delegate only interactive behavior to the client. */
 export default function EstimatorPage() {
   return (
     <main id="main-content" className="page-shell">

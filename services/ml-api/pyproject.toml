@@ -30,6 +30,7 @@ pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.coverage.run]
+# Branch coverage matters for validation, readiness, and artifact-failure paths.
 branch = true
 source = ["app"]
 
@@ -45,6 +46,7 @@ target-version = "py312"
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.mypy]
+# Strict typing protects ordered array, metadata, and HTTP contract boundaries.
 python_version = "3.12"
 strict = true
 packages = ["app"]

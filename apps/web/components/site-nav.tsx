@@ -1,5 +1,7 @@
 "use client";
 
+// Active-route styling requires the browser pathname, so this small component owns the client boundary.
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -13,6 +15,7 @@ export function SiteNav() {
   return (
     <nav aria-label="Primary navigation" className="site-nav">
       {links.map((link) => {
+        // startsWith also marks descendants such as /market/... as part of the Market section.
         const active = pathname.startsWith(link.href);
         return (
           <Link key={link.href} href={link.href} aria-current={active ? "page" : undefined}>

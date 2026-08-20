@@ -1,3 +1,5 @@
+"""Train, evaluate, version, and serialize the deterministic Ridge model artifact."""
+
 import argparse
 import csv
 import hashlib
@@ -31,16 +33,21 @@ from app.data import TrainingData, load_prediction_data, load_training_data
 
 @dataclass(frozen=True)
 class FoldMetrics:
+    """Metrics calculated from one untouched outer cross-validation fold."""
+
     r2: float
     mae: float
     rmse: float
 
 
 def _ridge(alpha: float) -> Pipeline:
+    # Keeping scaling inside the Pipeline prevents training/inference preprocessing drift.
     return Pipeline([("scaler", StandardScaler()), ("ridge", Ridge(alpha=alpha))])
 
 
 def _select_alpha(features: np.ndarray, target: np.ndarray) -> float:
+    """Select alpha using only the supplied training partition."""
+
     inner = KFold(n_splits=N_SPLITS, shuffle=True, random_state=RANDOM_SEED)
     scores: list[tuple[float, float]] = []
     for alpha in ALPHA_GRID:
@@ -52,6 +59,7 @@ def _select_alpha(features: np.ndarray, target: np.ndarray) -> float:
             rmses.append(root_mean_squared_error(target[validation_index], predictions))
         scores.append((float(np.mean(rmses)), alpha))
     best_rmse = min(score for score, _ in scores)
+    # np.isclose avoids unstable tie decisions caused by floating-point representation noise.
     return min(alpha for score, alpha in scores if np.isclose(score, best_rmse, rtol=1e-12))
 
 
@@ -64,6 +72,8 @@ def _metrics(target: np.ndarray, predictions: np.ndarray) -> FoldMetrics:
 
 
 def _summarize(folds: list[FoldMetrics]) -> dict[str, float | str]:
+    """Aggregate fold metrics using population standard deviation as documented metadata."""
+
     result: dict[str, float | str] = {"evaluation_protocol": "nested_5_fold_cross_validation"}
     for name in ("r2", "mae", "rmse"):
         values = np.asarray([getattr(fold, name) for fold in folds])
@@ -73,6 +83,8 @@ def _summarize(folds: list[FoldMetrics]) -> dict[str, float | str]:
 
 
 def _evaluate_model(data: TrainingData) -> tuple[dict[str, Any], list[float]]:
+    """Run nested CV so hyperparameter selection never sees an outer test fold."""
+
     outer = KFold(n_splits=N_SPLITS, shuffle=True, random_state=RANDOM_SEED)
     ridge_folds: list[FoldMetrics] = []
     baseline_folds: list[FoldMetrics] = []
@@ -80,6 +92,7 @@ def _evaluate_model(data: TrainingData) -> tuple[dict[str, Any], list[float]]:
     for train_index, test_index in outer.split(data.features):
         train_features, test_features = data.features[train_index], data.features[test_index]
         train_target, test_target = data.target[train_index], data.target[test_index]
+        # Alpha selection is repeated inside each outer fold to avoid optimistic evaluation leakage.
         alpha = _select_alpha(train_features, train_target)
         selected_alphas.append(alpha)
 
@@ -87,6 +100,7 @@ def _evaluate_model(data: TrainingData) -> tuple[dict[str, Any], list[float]]:
         ridge.fit(train_features, train_target)
         ridge_folds.append(_metrics(test_target, ridge.predict(test_features)))
 
+        # Ordinary linear regression is retained as a transparent comparison baseline.
         baseline: RegressorMixin = LinearRegression()
         baseline.fit(train_features, train_target)
         baseline_folds.append(_metrics(test_target, baseline.predict(test_features)))
@@ -97,6 +111,8 @@ def _evaluate_model(data: TrainingData) -> tuple[dict[str, Any], list[float]]:
 
 
 def _configuration_hash() -> str:
+    """Hash every training choice that can change model selection or evaluation."""
+
     configuration = {
         "feature_names": FEATURE_NAMES,
         "random_seed": RANDOM_SEED,
@@ -106,6 +122,7 @@ def _configuration_hash() -> str:
         "scikit_learn": sklearn.__version__,
         "evaluation_implementation": EVALUATION_IMPLEMENTATION_VERSION,
     }
+    # Canonical JSON removes formatting and key-order differences from the hash input.
     encoded = json.dumps(configuration, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest().upper()
 
@@ -117,13 +134,17 @@ def train(
     metadata_path: Path,
     predictions_path: Path,
 ) -> dict[str, Any]:
+    """Build all mutually consistent artifacts from one validated source dataset."""
+
     data = load_training_data(training_csv)
     evaluation, outer_alphas = _evaluate_model(data)
+    # Evaluation finishes first; the deployable model is then fit once on all available rows.
     final_alpha = _select_alpha(data.features, data.target)
     pipeline = _ridge(final_alpha)
     pipeline.fit(data.features, data.target)
 
     configuration_hash = _configuration_hash()
+    # Version identity changes when either source bytes or training configuration changes.
     model_version = f"ridge-v1-{data.sha256[:8].lower()}-{configuration_hash[:8].lower()}"
     scaler: StandardScaler = pipeline.named_steps["scaler"]
     regressor: Ridge = pipeline.named_steps["ridge"]
@@ -133,6 +154,8 @@ def train(
         "feature_names": list(FEATURE_NAMES),
         "coefficient_space": "standardized",
         "hyperparameters": {"alpha": final_alpha},
+        # strict=True makes a feature/coefficient length mismatch fail instead of
+        # truncating silently.
         "coefficients": dict(zip(FEATURE_NAMES, map(float, regressor.coef_), strict=True)),
         "intercept": float(regressor.intercept_),
         "feature_mean": dict(zip(FEATURE_NAMES, map(float, scaler.mean_), strict=True)),
@@ -168,6 +191,7 @@ def train(
     model_path.parent.mkdir(parents=True, exist_ok=True)
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
     predictions_path.parent.mkdir(parents=True, exist_ok=True)
+    # Store feature order beside the pipeline so startup can reject incompatible artifacts.
     joblib.dump({"pipeline": pipeline, "feature_names": list(FEATURE_NAMES)}, model_path)
     metadata_path.write_text(
         json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -175,6 +199,7 @@ def train(
 
     prediction_features = load_prediction_data(prediction_csv)
     predicted_prices = pipeline.predict(prediction_features)
+    # The reviewable prediction CSV uses a BOM for spreadsheet compatibility.
     with predictions_path.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
         writer.writerow([*FEATURE_NAMES, "predicted_price", "model_version"])
@@ -184,6 +209,8 @@ def train(
 
 
 def _repository_root() -> Path:
+    """Locate the checkout without assuming the caller's current working directory."""
+
     source = Path(__file__).resolve()
     for candidate in (source.parent, *source.parents):
         if (candidate / "data/raw").is_dir() and (candidate / "services/ml-api").is_dir():
@@ -192,6 +219,8 @@ def _repository_root() -> Path:
 
 
 def main() -> None:
+    """Expose deterministic training as a command-line entry point with overrideable paths."""
+
     root = _repository_root()
     parser = argparse.ArgumentParser(description="Train the deterministic housing Ridge model")
     parser.add_argument(
@@ -220,5 +249,6 @@ def main() -> None:
     )
 
 
+# Importing this module must not retrain the model; only direct execution invokes the CLI.
 if __name__ == "__main__":
     main()

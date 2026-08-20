@@ -1,3 +1,5 @@
+"""Define prediction, model-information, health, and readiness endpoints."""
+
 from typing import Annotated, cast
 
 from fastapi import APIRouter, Body, Depends, Request
@@ -25,9 +27,12 @@ infrastructure_router = APIRouter(tags=["infrastructure"])
 
 
 def get_model_runtime(request: Request) -> ModelRuntime | None:
+    """Resolve the startup-loaded runtime from application state for dependency injection."""
+
     return cast(ModelRuntime | None, getattr(request.app.state, "runtime", None))
 
 
+# Annotated keeps the runtime type visible to static checking while attaching FastAPI metadata.
 ModelRuntimeDependency = Annotated[ModelRuntime | None, Depends(get_model_runtime)]
 PredictionPayload = Annotated[
     PropertyFeatures | list[PropertyFeatures],
@@ -45,6 +50,9 @@ async def predict(
     payload: PredictionPayload,
     runtime: ModelRuntimeDependency,
 ) -> PredictionResponse | JSONResponse:
+    """Accept one property or a bounded batch and preserve input order in the response."""
+
+    # Normalize the union to one list so validation and response construction share a path.
     items = payload if isinstance(payload, list) else [payload]
     if not items:
         return error_response(request, 422, "EMPTY_BATCH", "Prediction batch must not be empty.")
@@ -58,6 +66,7 @@ async def predict(
         prices = runtime.predict(items)
     except ModelArtifactError:
         return error_response(request, 503, "MODEL_NOT_READY", "Model inference failed.")
+    # strict=True prevents silent truncation if a faulty runtime returns too few prices.
     predictions = [
         PredictionItem(index=index, predicted_price=price, warnings=runtime.warnings_for(item))
         for index, (item, price) in enumerate(zip(items, prices, strict=True))
@@ -76,6 +85,8 @@ async def predict(
     responses=MODEL_NOT_READY_RESPONSES,
 )
 async def model_info(request: Request, runtime: ModelRuntimeDependency) -> ModelInfo | JSONResponse:
+    """Expose validated artifact metadata only when the runtime is usable."""
+
     if runtime is None:
         return error_response(request, 503, "MODEL_NOT_READY", "Model artifact is not ready.")
     return runtime.model_info
@@ -89,6 +100,8 @@ async def model_info(request: Request, runtime: ModelRuntimeDependency) -> Model
 async def health(
     request: Request, runtime: ModelRuntimeDependency
 ) -> HealthResponse | JSONResponse:
+    """Report process health together with the artifact-backed serving state."""
+
     if runtime is None:
         return error_response(request, 503, "MODEL_NOT_READY", "Model artifact is not ready.")
     return HealthResponse(status="healthy", model_loaded=True, model_version=runtime.model_version)
@@ -102,6 +115,8 @@ async def health(
 async def ready(
     request: Request, runtime: ModelRuntimeDependency
 ) -> ReadinessResponse | JSONResponse:
+    """Allow traffic only after artifact loading and startup smoke inference succeed."""
+
     if runtime is None:
         return error_response(request, 503, "MODEL_NOT_READY", "Model artifact is not ready.")
     return ReadinessResponse(status="healthy")

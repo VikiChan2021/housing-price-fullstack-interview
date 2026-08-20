@@ -2,6 +2,7 @@ spring:
   application:
     name: market-api
   jackson:
+    # Keep Java camelCase internal while emitting the shared snake_case HTTP contract.
     property-naming-strategy: SNAKE_CASE
 
 server:
@@ -14,10 +15,12 @@ management:
         include: health,info
 
 market:
+  # Environment overrides serve containers; defaults support execution from the service directory.
   data-path: ${MARKET_DATA_PATH:../../data/raw/House Price Dataset.csv}
   cache-ttl-seconds: ${MARKET_CACHE_TTL_SECONDS:300}
   cache-max-entries: ${MARKET_CACHE_MAX_ENTRIES:256}
 
 ml-api:
+  # Model inference remains an HTTP dependency and is never copied into the Java service.
   base-url: ${ML_API_BASE_URL:http://ml-api:8000}
   timeout-seconds: ${ML_API_TIMEOUT_SECONDS:5}

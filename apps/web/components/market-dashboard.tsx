@@ -1,11 +1,14 @@
 "use client";
 
+// Filtering, pagination, scenario editing, and navigation-state restoration require client state.
+
 import { FormEvent, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { type MarketFilters, useMarketStateCache } from "@/components/market-state-provider";
 import { withBasePath } from "@/lib/base-path";
 import type { MarketInitialData, PropertyFeatures, WhatIfResponse } from "@/lib/types";
 
+// Empty strings keep form controls controlled while representing omitted query parameters.
 const emptyFilters: MarketFilters = { min_price: "", max_price: "", bedrooms: "", min_square_footage: "" };
 const propertyDefaults: PropertyFeatures = { square_footage: 1550, bedrooms: 3, bathrooms: 2, year_built: 1997, lot_size: 6800, distance_to_city_center: 4.1, school_rating: 7.6 };
 const scenarioDefaults: PropertyFeatures = { ...propertyDefaults, square_footage: 1750 };
@@ -22,10 +25,12 @@ const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD
 const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
 const subscribeToTimeZone = () => () => undefined;
 const readBrowserTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+// The stable server snapshot prevents hydration mismatches before the browser zone is available.
 const readServerTimeZone = () => "UTC";
 
 function queryFor(filters: MarketFilters): URLSearchParams {
   const query = new URLSearchParams();
+  // Omit empty controls so the backend can distinguish absent criteria from numeric zero.
   for (const [key, value] of Object.entries(filters)) if (value !== "") query.set(key, value);
   return query;
 }
@@ -33,6 +38,7 @@ function queryFor(filters: MarketFilters): URLSearchParams {
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(withBasePath(path), options);
   const type = response.headers.get("content-type") ?? "";
+  // Downloads are not routed through this helper, so only JSON responses are parsed.
   const payload = type.includes("json") ? await response.json() as unknown : null;
   if (!response.ok) {
     const error = payload as { error?: { message?: string; request_id?: string } } | null;
@@ -43,6 +49,7 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
 
 export function MarketDashboard({ initialData }: { initialData: MarketInitialData }) {
   const { cachedState, setCachedState } = useMarketStateCache();
+  // Provider state wins after navigation; server data initializes a fresh visit.
   const [filters, setFilters] = useState<MarketFilters>(cachedState?.filters ?? emptyFilters);
   const [summary, setSummary] = useState(cachedState?.summary ?? initialData.summary);
   const [properties, setProperties] = useState(cachedState?.properties ?? initialData.properties);
@@ -60,6 +67,7 @@ export function MarketDashboard({ initialData }: { initialData: MarketInitialDat
   );
 
   useEffect(() => {
+    // Cache view state above the route so unmounting this page does not discard user context.
     setCachedState({ filters, summary, properties, sort, baseline, scenario, whatIf });
   }, [baseline, filters, properties, scenario, setCachedState, sort, summary, whatIf]);
 
@@ -77,6 +85,7 @@ export function MarketDashboard({ initialData }: { initialData: MarketInitialDat
     propertiesQuery.set("size", "10");
     propertiesQuery.set("sort", nextSort);
     try {
+      // Summary and rows use the same filters and refresh concurrently as one visible operation.
       const [nextSummary, nextProperties] = await Promise.all([
         api<MarketInitialData["summary"]>(`/api/market/summary${summaryQuery ? `?${summaryQuery}` : ""}`),
         api<MarketInitialData["properties"]>(`/api/market/properties?${propertiesQuery}`),
@@ -98,6 +107,7 @@ export function MarketDashboard({ initialData }: { initialData: MarketInitialDat
 
   function updateScenario(which: "baseline" | "scenario", key: keyof PropertyFeatures, value: string) {
     const setter = which === "baseline" ? setBaseline : setScenario;
+    // Functional updates preserve every untouched feature when one controlled input changes.
     setter((current) => ({ ...current, [key]: Number(value) }));
   }
 
@@ -121,6 +131,7 @@ export function MarketDashboard({ initialData }: { initialData: MarketInitialDat
 
   const exportQuery = useMemo(() => {
     const query = queryFor(filters);
+    // The server needs the browser's IANA zone to render a meaningful PDF timestamp and filename.
     query.set("time_zone", timeZone);
     return query.toString();
   }, [filters, timeZone]);

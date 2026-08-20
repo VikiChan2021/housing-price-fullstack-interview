@@ -1,3 +1,5 @@
+"""Estimator orchestration and HTTP contract tests using a controllable ML client double."""
+
 from collections.abc import Sequence
 
 import pytest
@@ -25,6 +27,8 @@ VALID_PROPERTY = {
 
 
 class FakeMlClient:
+    """Protocol-compatible fake that records calls and injects dependency states."""
+
     def __init__(self) -> None:
         self.is_healthy = True
         self.is_ready = True
@@ -121,6 +125,7 @@ def test_validation_happens_before_ml_call() -> None:
     empty = request(app, "POST", "/api/v1/estimates/batch", json=[])
     large = request(app, "POST", "/api/v1/estimates/batch", json=[VALID_PROPERTY] * 101)
 
+    # No recorded call proves invalid traffic cannot consume downstream ML capacity.
     assert invalid.status_code == 422
     assert invalid.json()["error"]["code"] == "VALIDATION_ERROR"
     assert empty.status_code == 422
@@ -139,6 +144,7 @@ def test_validation_happens_before_ml_call() -> None:
     ],
 )
 def test_upstream_failures_are_stable(failure: Exception, status: int, code: str) -> None:
+    # Parametrization holds transport categories to one stable public mapping table.
     ml = FakeMlClient()
     ml.failure = failure
     app = create_app(ml)
@@ -150,6 +156,7 @@ def test_upstream_failures_are_stable(failure: Exception, status: int, code: str
 
 
 def test_health_degrades_and_readiness_fails_when_ml_is_down() -> None:
+    # Liveness and readiness deliberately answer different operational questions.
     ml = FakeMlClient()
     ml.is_healthy = False
     ml.is_ready = False

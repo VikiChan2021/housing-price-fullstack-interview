@@ -1,5 +1,6 @@
 "use client";
 
+// Error boundaries need a client reset callback to retry the failed route segment in place.
 export default function ErrorPage({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <main id="main-content" className="page-shell">

@@ -1,3 +1,5 @@
+"""Contract tests for source-row counts, BOM handling, hashes, and feature ordering."""
+
 from pathlib import Path
 
 import pytest
@@ -9,6 +11,7 @@ from app.data import DataContractError, load_prediction_data, load_training_data
 def test_training_loader_handles_bom_and_excludes_id(repository_root: Path) -> None:
     data = load_training_data(repository_root / "data/raw/House Price Dataset.csv")
 
+    # Shape, order, IDs, and hash together pin the exact immutable interview input.
     assert data.features.shape == (50, 7)
     assert data.target.shape == (50,)
     assert data.identifiers == tuple(range(1, 51))

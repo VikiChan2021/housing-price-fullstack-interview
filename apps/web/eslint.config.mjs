@@ -5,6 +5,6 @@ import nextTypeScript from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTypeScript,
+  // Generated output and framework-owned declarations are not maintainable source inputs.
   globalIgnores([".next/**", "coverage/**", "next-env.d.ts"]),
 ]);
-

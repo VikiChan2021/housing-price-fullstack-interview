@@ -20,6 +20,10 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Implements market filtering, aggregation, pagination, segmentation, sorting, and summary
+ * caching. The controller delegates here so statistical behavior remains pure and unit-testable.
+ */
 @Service
 public class MarketService {
     private final DatasetRepository repository;
@@ -31,6 +35,7 @@ public class MarketService {
                          @Value("${market.cache-max-entries}") long maxEntries) {
         this.repository = repository;
         this.ttlSeconds = ttlSeconds;
+        // Both time and size bounds prevent unbounded in-process cache growth.
         this.summaryCache = Caffeine.newBuilder()
                 .expireAfterWrite(Duration.ofSeconds(ttlSeconds))
                 .maximumSize(maxEntries)
@@ -41,6 +46,7 @@ public class MarketService {
     public MarketSummary summary(MarketFilters rawFilters, String requestId) {
         MarketFilters filters = rawFilters.validated();
         String key = filters.normalizedKey();
+        // Cache only computed statistics; request-specific metadata is assembled after the lookup.
         SummaryValues values = summaryCache.getIfPresent(key);
         boolean hit = values != null;
         if (values == null) {
@@ -60,8 +66,10 @@ public class MarketService {
         }
         Comparator<MarketProperty> comparator = comparator(sort);
         List<MarketProperty> rows = filtered(filters).stream().sorted(comparator).toList();
+        // Clamp an out-of-range page to an empty sub-list instead of indexing past the list.
         int from = Math.min(page * size, rows.size());
         int to = Math.min(from + size, rows.size());
+        // Integer ceiling division avoids an extra partially empty page.
         int totalPages = rows.isEmpty() ? 0 : (rows.size() + size - 1) / size;
         return new PropertyPage(rows.subList(from, to), page, size, rows.size(), totalPages,
                 normalizeSort(sort), filters.applied(), requestId);
@@ -69,14 +77,17 @@ public class MarketService {
 
     public SegmentResponse segments(MarketFilters rawFilters, String groupBy, String requestId) {
         MarketFilters filters = rawFilters.validated();
+        // The switch expression is also an allowlist: unsupported grouping cannot execute arbitrary logic.
         Function<MarketProperty, SegmentKey> classifier = switch (groupBy) {
             case "bedrooms" -> row -> new SegmentKey(row.bedrooms(), Integer.toString(row.bedrooms()),
                     row.bedrooms() + " bedrooms");
             case "year_band" -> row -> {
+                // Integer division floors the year to the first year of its decade.
                 int start = (row.yearBuilt() / 10) * 10;
                 return new SegmentKey(start, Integer.toString(start), start + "-" + (start + 9));
             };
             case "price_band" -> row -> {
+                // Cast and integer division place each price in a fixed $50,000 bucket.
                 int start = ((int) row.price() / 50_000) * 50_000;
                 return new SegmentKey(start, Integer.toString(start),
                         "$" + start + "-$" + (start + 49_999));
@@ -84,6 +95,7 @@ public class MarketService {
             default -> throw new IllegalArgumentException(
                     "group_by must be bedrooms, year_band, or price_band");
         };
+        // groupingBy collects the original rows once; SegmentKey later supplies numeric ordering.
         Map<SegmentKey, List<MarketProperty>> grouped = filtered(filters).stream()
                 .collect(Collectors.groupingBy(classifier, LinkedHashMap::new, Collectors.toList()));
         List<Segment> segments = grouped.entrySet().stream()
@@ -100,6 +112,7 @@ public class MarketService {
 
     private static SummaryValues calculateSummary(List<MarketProperty> rows) {
         if (rows.isEmpty()) {
+            // Nullable boxed values distinguish "no matching data" from a genuine numeric zero.
             return new SummaryValues(0, null, null, null, null, null);
         }
         List<Double> prices = rows.stream().map(MarketProperty::price).sorted().toList();
@@ -115,6 +128,7 @@ public class MarketService {
     }
 
     static double median(List<Double> sorted) {
+        // This helper requires ascending input; both callers sort before invoking it.
         int middle = sorted.size() / 2;
         return sorted.size() % 2 == 0
                 ? (sorted.get(middle - 1) + sorted.get(middle)) / 2.0
@@ -123,6 +137,7 @@ public class MarketService {
 
     private static Comparator<MarketProperty> comparator(String rawSort) {
         String[] parts = normalizeSort(rawSort).split(",");
+        // Mapping known field names to method references prevents reflection-based or injected sorting.
         Comparator<MarketProperty> comparator = switch (parts[0]) {
             case "id" -> Comparator.comparingInt(MarketProperty::id);
             case "price" -> Comparator.comparingDouble(MarketProperty::price);
@@ -140,6 +155,7 @@ public class MarketService {
 
     private static String normalizeSort(String rawSort) {
         String sort = rawSort == null || rawSort.isBlank() ? "id,asc" : rawSort.toLowerCase();
+        // A negative split limit preserves an empty direction so malformed input is rejected explicitly.
         String[] parts = sort.split(",", -1);
         if (parts.length != 2 || !(parts[1].equals("asc") || parts[1].equals("desc"))) {
             throw new IllegalArgumentException("sort must use <field>,<asc|desc>");
@@ -151,6 +167,7 @@ public class MarketService {
         return summaryCache.stats().hitCount();
     }
 
+    // Internal records keep cached and ordering-only data out of the public API model package.
     private record SummaryValues(long count, Double averagePrice, Double medianPrice,
                                  Double minPrice, Double maxPrice, Double averageSquareFootage) {
     }

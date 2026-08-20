@@ -1,3 +1,5 @@
+"""HTTP contract tests backed by a real trained Ridge artifact."""
+
 import json
 from pathlib import Path
 from uuid import UUID
@@ -29,6 +31,7 @@ def test_single_and_batch_predictions_preserve_order(trained_artifacts: tuple[Pa
         json=[VALID_PROPERTY, {**VALID_PROPERTY, "square_footage": 2200}],
     )
 
+    # The response index is the public guarantee that batch outputs align with inputs.
     assert single.status_code == 200
     assert single.json()["count"] == 1
     assert single.json()["predictions"][0]["predicted_price"] > 0
@@ -60,6 +63,7 @@ def test_outside_training_range_returns_ordered_warning(
 def test_validation_empty_and_large_batches_use_stable_errors(
     trained_artifacts: tuple[Path, Path],
 ) -> None:
+    # Exercise schema, business batch bounds, and malformed JSON as separate failure classes.
     app = create_app(*trained_artifacts)
     missing = request(app, "POST", "/api/v1/predict", json={"square_footage": 1})
     empty = request(app, "POST", "/api/v1/predict", json=[])
@@ -128,6 +132,7 @@ def test_model_info_health_and_openapi_examples(trained_artifacts: tuple[Path, P
     assert info.json()["feature_names"] == list(VALID_PROPERTY)
     assert set(info.json()["coefficients"]) == set(VALID_PROPERTY)
     assert health.json()["model_loaded"] is True
+    # Generated documentation is tested as a client-facing contract, not treated as prose only.
     examples = openapi.json()["paths"]["/api/v1/predict"]["post"]["requestBody"]["content"][
         "application/json"
     ]["examples"]
@@ -143,6 +148,7 @@ def test_model_info_health_and_openapi_examples(trained_artifacts: tuple[Path, P
 
 
 def test_missing_and_corrupt_models_are_not_reported_healthy(tmp_path: Path) -> None:
+    # Both absent and unreadable artifacts must leave the process diagnosable but not ready.
     missing_app = create_app(tmp_path / "missing.joblib", tmp_path / "missing.json")
     missing = request(missing_app, "GET", "/health")
     assert missing.status_code == 503

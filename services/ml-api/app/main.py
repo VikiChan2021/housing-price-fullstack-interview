@@ -1,3 +1,5 @@
+"""Create the ML FastAPI application and own model-runtime startup lifecycle."""
+
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -11,6 +13,8 @@ from app.runtime import ModelArtifactError, load_runtime
 
 
 def _repository_root() -> Path:
+    """Locate artifacts reliably for local runs started from different directories."""
+
     source = Path(__file__).resolve()
     for candidate in (source.parent, *source.parents):
         if (candidate / "models").is_dir() and (candidate / "services/ml-api").is_dir():
@@ -19,6 +23,8 @@ def _repository_root() -> Path:
 
 
 def _paths() -> tuple[Path, Path]:
+    """Resolve explicit environment overrides before repository-local defaults."""
+
     model_path = os.getenv("ML_MODEL_PATH")
     metadata_path = os.getenv("ML_METADATA_PATH")
     if model_path and metadata_path:
@@ -31,16 +37,20 @@ def _paths() -> tuple[Path, Path]:
 
 
 def create_app(model_path: Path | None = None, metadata_path: Path | None = None) -> FastAPI:
+    """Build an independently testable application with optional artifact paths."""
+
     configured_model, configured_metadata = _paths()
     chosen_model = model_path or configured_model
     chosen_metadata = metadata_path or configured_metadata
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+        # Load once at startup; request handlers never retrain or deserialize per request.
         try:
             application.state.runtime = load_runtime(chosen_model, chosen_metadata)
             application.state.load_error = None
         except ModelArtifactError as exc:
+            # Keep the process alive so health/readiness can expose the artifact failure.
             application.state.runtime = None
             application.state.load_error = str(exc)
         yield

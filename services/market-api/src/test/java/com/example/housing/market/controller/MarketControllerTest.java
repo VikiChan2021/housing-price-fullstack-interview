@@ -32,12 +32,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Uses a Spring MVC slice to test query binding, filters, status codes, headers, and JSON without
+ * starting the full application or making real downstream calls.
+ */
 @WebMvcTest(MarketController.class)
 @Import({ApiExceptionHandler.class, RequestIdFilter.class})
 class MarketControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    // Spring inserts this mock into the MVC application context used by the controller.
     @MockitoBean
     private MarketService marketService;
 
@@ -52,6 +57,7 @@ class MarketControllerTest {
 
     @Test
     void bindsSnakeCaseFiltersAndReturnsRequestId() throws Exception {
+        // thenAnswer copies the runtime request ID argument into the mocked response.
         when(marketService.summary(any(), anyString())).thenAnswer(invocation ->
                 new MarketSummary(1, 300000d, 300000d, 300000d, 300000d, 1800d,
                         Map.of("min_price", 250000d), new CacheInfo(false, 300),
@@ -66,6 +72,7 @@ class MarketControllerTest {
                 .andExpect(jsonPath("$.request_id").value("5c59f6b4-4a42-49c5-a7aa-b1dcb1431212"));
 
         ArgumentCaptor<MarketFilters> filters = ArgumentCaptor.forClass(MarketFilters.class);
+        // Capturing the argument verifies protocol-to-domain conversion, not only response rendering.
         verify(marketService).summary(filters.capture(), anyString());
         assertThat(filters.getValue().minPrice()).isEqualTo(250000d);
     }

@@ -6,6 +6,7 @@ const estimatorBaseUrl = process.env.ESTIMATOR_API_BASE_URL ?? "http://127.0.0.1
 const marketBaseUrl = process.env.MARKET_API_BASE_URL ?? "http://127.0.0.1:8080";
 
 async function ready(baseUrl: string) {
+  // Readiness probes bypass caches and are bounded by the same downstream timeout as BFF calls.
   try {
     const response = await fetch(new URL("/ready", baseUrl), {
       cache: "no-store",
@@ -19,11 +20,13 @@ async function ready(baseUrl: string) {
 
 export async function GET() {
   const requestId = crypto.randomUUID();
+  // Both independent business services are probed concurrently to reduce health-check latency.
   const [estimatorReady, marketReady] = await Promise.all([
     ready(estimatorBaseUrl),
     ready(marketBaseUrl),
   ]);
   if (!estimatorReady || !marketReady) {
+    // Return both states in one response so operators can identify the failing branch immediately.
     return NextResponse.json(
       {
         error: {

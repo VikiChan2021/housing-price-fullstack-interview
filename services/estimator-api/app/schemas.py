@@ -1,3 +1,5 @@
+"""Strict public DTOs and the private ML response contract used by estimator orchestration."""
+
 from datetime import datetime
 from typing import Annotated, Literal
 
@@ -5,13 +7,18 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
 
 class StrictModel(BaseModel):
+    """Reject unknown JSON fields instead of silently accepting client mistakes."""
+
     model_config = ConfigDict(extra="forbid")
 
 
+# Annotated layers reusable finite-number validation with the bounds on each feature.
 FiniteNumber = Annotated[float, Field(allow_inf_nan=False)]
 
 
 class PropertyFeatures(StrictModel):
+    """Mirror the seven ML features while deliberately excluding source identifiers."""
+
     square_footage: Annotated[FiniteNumber, Field(gt=0, le=100_000)]
     bedrooms: Annotated[StrictInt, Field(ge=0, le=100)]
     bathrooms: Annotated[FiniteNumber, Field(ge=0, le=100)]
@@ -37,6 +44,8 @@ class MlPredictionItem(StrictModel):
 
 
 class MlPredictionResponse(StrictModel):
+    """Validate the downstream ML wire format before business responses are created."""
+
     predictions: list[MlPredictionItem]
     count: int
     model_version: str
@@ -44,6 +53,8 @@ class MlPredictionResponse(StrictModel):
 
 
 class EstimateBase(StrictModel):
+    """Fields shared by single estimates and indexed batch estimates."""
+
     estimate_id: str
     property: PropertyFeatures
     predicted_price: Annotated[float, Field(gt=0, allow_inf_nan=False)]

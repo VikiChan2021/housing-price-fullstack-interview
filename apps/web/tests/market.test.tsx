@@ -13,6 +13,7 @@ const initial: MarketInitialData = {
 };
 
 function json(payload: unknown) {
+  // Keep test responses faithful to the JSON content-type branch in the production fetch helper.
   return new Response(JSON.stringify(payload), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
@@ -36,6 +37,7 @@ describe("MarketDashboard", () => {
   it("refreshes summary and rows with the same filters", async () => {
     const filteredSummary = { ...initial.summary, count: 22, average_price: 240909.09, applied_filters: { bedrooms: 3 }, cache: { hit: true, ttl_seconds: 300 } };
     const filteredPage = { ...initial.properties, total_items: 22, items: [{ ...initial.properties.items[0], id: 2, bedrooms: 3, price: 265000 }] };
+    // Route summary and property requests to distinct fixtures while recording both URLs.
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
       if (url.includes("summary")) return json(filteredSummary);
@@ -58,6 +60,7 @@ describe("MarketDashboard", () => {
       String(input).includes("summary") ? json(filteredSummary) : json(filteredPage));
 
     function RouteHarness() {
+      // Unmount and remount the dashboard while keeping its layout-level provider alive.
       const [showMarket, setShowMarket] = useState(true);
       return (
         <MarketStateProvider>

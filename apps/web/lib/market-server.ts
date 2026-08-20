@@ -4,6 +4,7 @@ import { WEB_API_TIMEOUT_MS } from "./config";
 const marketBaseUrl = process.env.MARKET_API_BASE_URL ?? "http://127.0.0.1:8080";
 
 async function readJson<T>(path: string): Promise<T> {
+  // Server Components call the private service directly; no browser-visible URL is emitted.
   const response = await fetch(`${marketBaseUrl}${path}`, {
     cache: "no-store",
     headers: { "X-Request-ID": crypto.randomUUID() },
@@ -16,6 +17,7 @@ async function readJson<T>(path: string): Promise<T> {
 }
 
 export async function getInitialMarketData(): Promise<MarketInitialData> {
+  // Independent summary and row queries run concurrently to minimize server-render latency.
   const [summary, properties] = await Promise.all([
     readJson<MarketInitialData["summary"]>("/api/v1/market/summary"),
     readJson<MarketInitialData["properties"]>("/api/v1/market/properties?page=0&size=10&sort=id,asc"),

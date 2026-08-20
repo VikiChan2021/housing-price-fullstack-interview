@@ -1,3 +1,5 @@
+"""Reusable downstream-failure response declarations for generated OpenAPI."""
+
 from typing import Any
 
 from app.schemas import ErrorEnvelope
@@ -13,6 +15,7 @@ ESTIMATE_RESPONSES: OpenApiResponses = {
 
 ESTIMATE_BATCH_RESPONSES: OpenApiResponses = {
     413: {"model": ErrorEnvelope},
+    # Dictionary unpacking keeps batch and single dependency errors identical.
     **ESTIMATE_RESPONSES,
 }
 

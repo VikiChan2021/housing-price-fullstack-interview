@@ -41,6 +41,10 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 
+/**
+ * Exposes the market HTTP contract while delegating filtering, statistics, exports, and ML calls
+ * to their owning layers. Keeping this class thin makes protocol binding independently testable.
+ */
 @RestController
 @RequestMapping
 public class MarketController {
@@ -90,11 +94,13 @@ public class MarketController {
     public WhatIfResponse whatIf(@Valid @RequestBody WhatIfRequest whatIf,
                                  HttpServletRequest request) {
         String requestId = RequestIdFilter.requestId(request);
+        // The client validates these batch indexes, so position 0 is always baseline and 1 scenario.
         MlApiClient.PredictionResponse result = mlApiClient.predict(
                 List.of(whatIf.baseline(), whatIf.scenario()), requestId);
         double baseline = result.predictions().get(0).predictedPrice();
         double scenario = result.predictions().get(1).predictedPrice();
         double difference = scenario - baseline;
+        // A boxed Double allows JSON null when division by zero makes the percentage undefined.
         Double percentage = baseline == 0 ? null : BigDecimal.valueOf(difference / baseline * 100)
                 .setScale(2, RoundingMode.HALF_UP).doubleValue();
         return new WhatIfResponse(baseline, scenario, difference, percentage, result.modelVersion(),
@@ -107,9 +113,11 @@ public class MarketController {
                                          @RequestParam String format,
                                          @RequestParam(name = "time_zone", defaultValue = "UTC")
                                          String timeZone) {
+        // Validate before reading rows so both CSV and PDF apply exactly the same filter semantics.
         MarketFilters filters = parameters.filters().validated();
         List<MarketProperty> rows = marketService.filtered(filters);
         Instant generatedAt = clock.instant();
+        // The caller's IANA zone controls both the visible PDF timestamp and dated filename.
         ZoneId zoneId = parseTimeZone(timeZone);
         String normalized = format.toLowerCase();
         byte[] content;
@@ -125,6 +133,7 @@ public class MarketController {
         }
         String filename = "market-export-" + LocalDate.ofInstant(generatedAt, zoneId)
                 .toString().replace("-", "") + "." + normalized;
+        // Content-Disposition uses Spring's builder to quote and escape attachment names safely.
         return ResponseEntity.ok()
                 .contentType(mediaType)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -148,6 +157,7 @@ public class MarketController {
                     "DATASET_NOT_READY", "Market dataset is not ready.", List.of(),
                     RequestIdFilter.requestId(request))));
         }
+        // Liveness remains 200 in a degraded state because this process can still serve market data.
         return ResponseEntity.ok(new HealthResponse(mlUp ? "healthy" : "degraded", "market-api",
                 true, repository.rowCount(), mlUp ? "up" : "down"));
     }
@@ -158,6 +168,7 @@ public class MarketController {
             throw new DatasetNotReadyException("Market dataset is not ready");
         }
         if (!mlApiClient.ready()) {
+            // Readiness is stricter than health: traffic must wait until the prediction dependency is ready.
             return ResponseEntity.status(503).body(new ErrorEnvelope(new ErrorBody(
                     "UPSTREAM_UNAVAILABLE", "ML API is not ready.", List.of(),
                     RequestIdFilter.requestId(request))));
@@ -165,6 +176,10 @@ public class MarketController {
         return ResponseEntity.ok(new ReadyResponse("healthy", "market-api"));
     }
 
+    /**
+     * Spring binds query parameters to this immutable record. {@link BindParam} preserves the
+     * public snake_case API while the Java components retain idiomatic camelCase names.
+     */
     public record FilterParameters(
             @BindParam("min_price") Double minPrice,
             @BindParam("max_price") Double maxPrice,
@@ -178,6 +193,7 @@ public class MarketController {
             @BindParam("max_distance_to_city_center")
             Double maxDistanceToCityCenter) {
         MarketFilters filters() {
+            // Conversion to the service-layer value object prevents HTTP binding concerns from leaking inward.
             return new MarketFilters(minPrice, maxPrice, bedrooms, minSquareFootage,
                     maxSquareFootage, minBathrooms, minYearBuilt, maxYearBuilt,
                     minSchoolRating, maxDistanceToCityCenter);

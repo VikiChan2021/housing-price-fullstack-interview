@@ -1,3 +1,5 @@
+"""Create the Estimator API and manage its reusable asynchronous ML client."""
+
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -10,6 +12,8 @@ from app.routers import estimate_router, infrastructure_router
 
 
 def create_app(client: MlApiClient | None = None) -> FastAPI:
+    """Build an application with an injectable client for isolated contract tests."""
+
     configured_client = client or HttpMlApiClient(
         base_url=os.getenv("ML_API_BASE_URL", "http://ml-api:8000"),
         timeout_seconds=float(os.getenv("ML_API_TIMEOUT_SECONDS", "3")),
@@ -17,6 +21,7 @@ def create_app(client: MlApiClient | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+        # The client pool is shared across requests and closed exactly once at shutdown.
         application.state.ml_client = configured_client
         yield
         await configured_client.aclose()

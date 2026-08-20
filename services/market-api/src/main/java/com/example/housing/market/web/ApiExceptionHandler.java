@@ -17,6 +17,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.List;
 
+/**
+ * Converts internal exceptions into the stable error envelope defined by the HTTP contract.
+ * Centralizing this mapping keeps controllers focused on protocol orchestration and guarantees
+ * that failure responses carry the same request ID as successful responses.
+ */
 @RestControllerAdvice
 public class ApiExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
@@ -29,6 +34,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ErrorEnvelope> bodyValidation(MethodArgumentNotValidException exception,
                                                  HttpServletRequest request) {
+        // Bean Validation may report several invalid nested fields, so preserve every detail.
         List<ErrorDetail> details = exception.getBindingResult().getFieldErrors().stream()
                 .map(error -> new ErrorDetail(error.getField(), error.getDefaultMessage()))
                 .toList();
@@ -60,6 +66,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(UpstreamBadGatewayException.class)
     ResponseEntity<ErrorEnvelope> badGateway(UpstreamBadGatewayException exception,
                                              HttpServletRequest request) {
+        // A reachable ML service with a bad status or malformed body is a 502, not a local 500.
         return error(HttpStatus.BAD_GATEWAY, "UPSTREAM_UNAVAILABLE", exception.getMessage(),
                 List.of(), request);
     }
@@ -74,6 +81,7 @@ public class ApiExceptionHandler {
     private static ResponseEntity<ErrorEnvelope> error(HttpStatus status, String code, String message,
                                                         List<ErrorDetail> details,
                                                         HttpServletRequest request) {
+        // ResponseEntity carries the transport status while the body retains a stable domain code.
         ErrorEnvelope envelope = new ErrorEnvelope(new ErrorBody(code, message, details,
                 RequestIdFilter.requestId(request)));
         return ResponseEntity.status(status).body(envelope);

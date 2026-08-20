@@ -15,6 +15,10 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/**
+ * Drives the real Java HTTP client against a lightweight local server to verify transport-level
+ * failures that a mocked RestClient could hide.
+ */
 class MlApiClientTest {
     private HttpServer server;
 
@@ -49,6 +53,7 @@ class MlApiClientTest {
     void mapsAReadTimeoutToGatewayTimeout() throws Exception {
         start(exchange -> {
             try {
+                // Sleep beyond the client's one-second read timeout to exercise cause-chain mapping.
                 Thread.sleep(1500);
                 respond(exchange, 200, "{}");
             } catch (InterruptedException exception) {
@@ -62,6 +67,7 @@ class MlApiClientTest {
     }
 
     private void start(ThrowingHandler handler) throws IOException {
+        // Port zero asks the operating system for an available ephemeral port, avoiding test clashes.
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/api/v1/predict", exchange -> {
             try {
@@ -89,6 +95,7 @@ class MlApiClientTest {
         exchange.getResponseBody().write(bytes);
     }
 
+    // The custom interface lets test lambdas propagate IOException without wrapping every handler.
     @FunctionalInterface
     private interface ThrowingHandler {
         void handle(HttpExchange exchange) throws IOException;

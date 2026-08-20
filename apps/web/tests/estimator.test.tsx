@@ -24,11 +24,13 @@ const estimate = {
 
 describe("EstimatorClient", () => {
   beforeEach(() => {
+    // Browser persistence and fetch mocks must not cross test boundaries.
     localStorage.clear();
     vi.restoreAllMocks();
   });
 
   it("submits all seven fields and saves the returned estimate", async () => {
+    // Mock only the network boundary while exercising real form and storage behavior.
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify(estimate), { status: 200, headers: { "Content-Type": "application/json" } }),
     );
@@ -87,6 +89,7 @@ describe("EstimatorClient", () => {
   });
 
   it("migrates saved history to stable record numbers and uses the same newest-first order", async () => {
+    // Seed a legacy envelope without sequence fields to exercise the in-place migration path.
     const older = { ...estimate, estimate_id: "older-estimate", predicted_price: 220000, created_at: "2026-08-14T00:00:01Z" };
     const newer = { ...estimate, estimate_id: "newer-estimate", predicted_price: 260000, created_at: "2026-08-14T00:00:02Z" };
     localStorage.setItem("housing-estimates:v1", JSON.stringify({ version: 1, estimates: [newer, older] }));

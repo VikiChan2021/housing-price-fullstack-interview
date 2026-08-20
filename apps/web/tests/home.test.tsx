@@ -5,6 +5,7 @@ import Home from "../app/page";
 
 describe("Home", () => {
   it("routes users to both implemented applications", () => {
+    // Role-based queries verify accessible names as well as visible navigation content.
     render(<Home />);
 
     expect(screen.getByRole("heading", { name: "One portal. Two ways to understand a property." })).toBeTruthy();

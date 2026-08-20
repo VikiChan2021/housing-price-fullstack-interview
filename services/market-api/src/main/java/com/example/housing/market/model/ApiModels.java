@@ -8,13 +8,20 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Namespace for immutable HTTP request and response records.
+ * Keeping transport DTOs separate from service internals prevents accidental API changes when
+ * aggregation or caching implementations evolve.
+ */
 public final class ApiModels {
+    // Utility namespace only; it must never be instantiated.
     private ApiModels() {
     }
 
     public record CacheInfo(boolean hit, @JsonProperty("ttl_seconds") long ttlSeconds) {
     }
 
+    // Boxed numeric values serialize as null when a valid filter matches no source rows.
     public record MarketSummary(
             long count,
             @JsonProperty("average_price") Double averagePrice,
@@ -50,6 +57,7 @@ public final class ApiModels {
             @JsonProperty("request_id") String requestId) {
     }
 
+    // @Valid cascades validation into both nested feature records after null checks succeed.
     public record WhatIfRequest(@NotNull @Valid PropertyFeatures baseline,
                                 @NotNull @Valid PropertyFeatures scenario) {
     }

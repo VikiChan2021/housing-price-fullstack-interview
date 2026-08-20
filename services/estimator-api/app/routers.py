@@ -1,3 +1,5 @@
+"""Orchestrate estimate endpoints without duplicating or retraining model logic."""
+
 from datetime import UTC, datetime
 from typing import Annotated, cast
 from uuid import uuid4
@@ -32,9 +34,12 @@ infrastructure_router = APIRouter(tags=["infrastructure"])
 
 
 def get_ml_client(request: Request) -> MlApiClient:
+    """Resolve the lifespan-owned client through FastAPI dependency injection."""
+
     return cast(MlApiClient, request.app.state.ml_client)
 
 
+# Annotated combines the static Protocol type with FastAPI's runtime dependency marker.
 MlClientDependency = Annotated[MlApiClient, Depends(get_ml_client)]
 
 
@@ -43,6 +48,8 @@ async def _call_ml(
     properties: list[PropertyFeatures],
     ml_client: MlApiClient,
 ) -> tuple[MlPredictionResponse | None, JSONResponse | None]:
+    """Map typed client failures to the stable public HTTP status and error envelope."""
+
     try:
         return await ml_client.predict(properties, request_id(request)), None
     except UpstreamTimeout:
@@ -65,9 +72,12 @@ async def create_estimate(
     property_features: PropertyFeatures,
     ml_client: MlClientDependency,
 ) -> EstimateResponse | JSONResponse:
+    """Create one traceable estimate from one ML API prediction."""
+
     result, error = await _call_ml(request, [property_features], ml_client)
     if error is not None:
         return error
+    # _call_ml returns exactly one populated tuple branch; assert narrows the static type here.
     assert result is not None
     prediction = result.predictions[0]
     return EstimateResponse(
@@ -91,6 +101,8 @@ async def create_estimate_batch(
     properties: Annotated[list[PropertyFeatures], Body()],
     ml_client: MlClientDependency,
 ) -> EstimateBatchResponse | JSONResponse:
+    """Create up to 100 estimates while preserving request order and one creation timestamp."""
+
     if not properties:
         return error_response(request, 422, "EMPTY_BATCH", "Estimate batch must not be empty.")
     if len(properties) > 100:
@@ -99,6 +111,7 @@ async def create_estimate_batch(
     if error is not None:
         return error
     assert result is not None
+    # One timestamp communicates that the entire batch was produced as one operation.
     created_at = datetime.now(UTC)
     estimates = [
         IndexedEstimate(
@@ -110,6 +123,7 @@ async def create_estimate_batch(
             warnings=prediction.warnings,
             created_at=created_at,
         )
+        # strict=True prevents silently dropping inputs if a dependency invariant regresses.
         for index, (property_features, prediction) in enumerate(
             zip(properties, result.predictions, strict=True)
         )
@@ -121,6 +135,8 @@ async def create_estimate_batch(
 
 @infrastructure_router.get("/health", response_model=HealthResponse)
 async def health(ml_client: MlClientDependency) -> HealthResponse:
+    """Remain live but degraded when the ML dependency is temporarily down."""
+
     dependency_up = await ml_client.health()
     return HealthResponse(
         status="healthy" if dependency_up else "degraded",
@@ -136,6 +152,8 @@ async def health(ml_client: MlClientDependency) -> HealthResponse:
 async def ready(
     request: Request, ml_client: MlClientDependency
 ) -> ReadinessResponse | JSONResponse:
+    """Reject traffic until the ML API reports that its artifact is ready."""
+
     if not await ml_client.ready():
         return error_response(request, 503, "UPSTREAM_UNAVAILABLE", "ML API is not ready.")
     return ReadinessResponse(status="healthy")

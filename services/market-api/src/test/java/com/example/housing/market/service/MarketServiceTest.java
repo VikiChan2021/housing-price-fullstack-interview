@@ -10,6 +10,10 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/**
+ * Exercises business calculations against the real immutable CSV while keeping HTTP concerns out
+ * of scope. Rebuilding the service before each test also gives every case an empty cache.
+ */
 class MarketServiceTest {
     private DatasetRepository repository;
     private MarketService service;
@@ -24,6 +28,7 @@ class MarketServiceTest {
     @Test
     void loadsExactDatasetAndCalculatesSourceBackedSummary() {
         MarketSummary first = service.summary(emptyFilters(), "request-1");
+        // Repeating the same normalized filters is what turns the second lookup into a cache hit.
         MarketSummary second = service.summary(emptyFilters(), "request-2");
 
         assertThat(repository.loaded()).isTrue();
@@ -41,6 +46,7 @@ class MarketServiceTest {
 
     @Test
     void normalizesCacheKeysAndSeparatesDifferentFilters() {
+        // The d and .0 spellings create equal numeric values through different Java literal forms.
         MarketFilters integerStyle = new MarketFilters(200000.0, null, 3, null, null,
                 null, null, null, null, null);
         MarketFilters sameValues = new MarketFilters(200000d, null, 3, null, null,
@@ -84,6 +90,7 @@ class MarketServiceTest {
     }
 
     private static MarketFilters emptyFilters() {
+        // Null record components represent omitted query parameters throughout the service layer.
         return new MarketFilters(null, null, null, null, null,
                 null, null, null, null, null);
     }

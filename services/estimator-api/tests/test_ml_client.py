@@ -1,3 +1,5 @@
+"""Transport tests for downstream status, timeout, probe, and payload validation."""
+
 import asyncio
 
 import httpx
@@ -18,6 +20,7 @@ PROPERTY = PropertyFeatures(
 
 
 def test_http_client_validates_success_and_probes() -> None:
+    # MockTransport exercises HTTPX serialization and response parsing without opening a socket.
     async def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/api/v1/predict":
             assert request.headers["X-Request-ID"] == "request-1"
@@ -58,6 +61,7 @@ def test_http_client_maps_upstream_status(status: int) -> None:
 
 
 def test_http_client_maps_timeout_and_bad_payload() -> None:
+    # Transport failure and schema failure intentionally map to different public categories.
     def timeout(_: httpx.Request) -> httpx.Response:
         raise httpx.ReadTimeout("slow")
 
